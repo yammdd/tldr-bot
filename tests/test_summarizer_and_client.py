@@ -16,7 +16,13 @@ from tldr_bot.discord_ext.preprocessor import (
     PreprocessedConversation,
 )
 from tldr_bot.discord_ext.ui_summary import build_summary_embeds
-from tldr_bot.llm.client import LLMError, LLMResponse, UnifiedLLMClient
+from tldr_bot.llm.client import (
+    LLMError,
+    LLMResponse,
+    UnifiedLLMClient,
+    filter_and_rank_chat_models,
+    map_openai_exception,
+)
 from tldr_bot.llm.summarizer import ConversationSummarizer, parse_and_validate_summary
 from tldr_bot.llm.token_budget import TranscriptTurn
 from tldr_bot.main import TldrBot
@@ -37,7 +43,6 @@ def _fake_completion(text: str, prompt_tokens: int = 50, completion_tokens: int 
 async def test_live_smoke_test_success_and_reasoning_model_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     client = UnifiedLLMClient(allow_local_endpoints=False)
 
-    # Bypass DNS during offline unit tests while keeping URL validation intact
     async def _fake_validate(raw_url: str, *, allow_local: bool = False, resolve_dns: bool = True) -> str:
         from tldr_bot.security.ssrf import validate_endpoint_url
         return validate_endpoint_url(raw_url, allow_local=allow_local, resolve_dns=False)
@@ -122,20 +127,16 @@ async def test_live_smoke_test_maps_401_and_redacts_secret(monkeypatch: pytest.M
 
 
 def test_map_openai_exception_handles_google_list_error_body() -> None:
-    from tldr_bot.llm.client import map_openai_exception
-
     req = httpx.Request("POST", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
     list_body = [{"error": {"code": 404, "message": "Model deprecated. Use gemini-3.8-flash."}}]
     resp = httpx.Response(404, request=req, json=list_body)
     exc = openai.NotFoundError("Error code: 404", response=resp, body=list_body)
-    mapped = map_openai_exception(exc, api_key="AQ.testkey12345678901234567890", model="gemini-2.5-flash")
+    mapped = map_openai_exception(exc, api_key="AQ.FakeTestKey1234567890123456", model="gemini-2.5-flash")
     assert mapped.code == "err_not_found"
     assert "gemini-3.8-flash" in mapped.detail
 
 
 def test_filter_and_rank_chat_models() -> None:
-    from tldr_bot.llm.client import filter_and_rank_chat_models
-
     raw = [
         "models/text-embedding-004",
         "models/imagen-4.0-generate-001",
@@ -144,13 +145,12 @@ def test_filter_and_rank_chat_models() -> None:
         "models/gemini-flash-lite-latest",
         "models/gemini-3.1-pro-preview",
         "models/gemini-3.5-flash-lite",
-        "models/gemini-3.8-flash",  # duplicate
+        "models/gemini-3.8-flash",
     ]
     ranked = filter_and_rank_chat_models(raw, current_model="gemini-3.8-flash")
     assert "text-embedding-004" not in ranked
     assert "imagen-4.0-generate-001" not in ranked
     assert "veo-3.0-generate" not in ranked
-    # Active model always pinned first, followed by flash-lite-latest & flash-lite
     assert ranked[0] == "gemini-3.8-flash"
     assert ranked[1] == "gemini-flash-lite-latest"
     assert len(ranked) == 4
@@ -158,21 +158,20 @@ def test_filter_and_rank_chat_models() -> None:
 
 def test_parse_and_validate_summary_strips_think_hallucinated_refs_and_mass_mentions() -> None:
     payload = {
-        "overview": "Nhóm chốt kèo lẩu và @everyone chú ý hotfix Redis.",
+        "overview": "Team finalized dinner plans and @everyone noted the Redis hotfix.",
         "topics": [
             {
-                "emoji": "🍜",
-                "title": "Kèo ăn tối",
-                "speakers": ["Minh", "Lan"],
-                "summary": "**Minh** rủ đi ăn lẩu; **Lan** đồng ý.",
+                "title": "Dinner plans",
+                "speakers": ["Alex", "Maya"],
+                "summary": "**Alex** suggested ramen at 7:30 PM; **Maya** confirmed.",
                 "status": "decided",
-                "ref_ids": [1, 9999, 2],  # 9999 is hallucinated and MUST be dropped!
+                "ref_ids": [1, 9999, 2],
             }
         ],
-        "action_items": [{"owner": "Minh", "task": "Đặt bàn @here", "ref_id": 2}],
-        "open_questions": ["Chưa rõ **Vy** có đi không."],
+        "action_items": [{"owner": "Alex", "task": "Reserve table @here", "ref_id": 2}],
+        "open_questions": ["Whether **Sam** can join tonight."],
     }
-    raw = f"<think>internal reasoning</think>\n```json\n{json.dumps(payload, ensure_ascii=False)}\n```"
+    raw = f"<think>internal reasoning</think>\n```json\n{json.dumps(payload)}\n```"
 
     res = parse_and_validate_summary(
         raw,
@@ -188,8 +187,8 @@ def test_parse_and_validate_summary_strips_think_hallucinated_refs_and_mass_ment
         total_raw_messages=2,
         model_used="deepseek-chat",
     )
-    assert "@everyone" not in res.overview  # Neutralized with zero-width space
-    assert res.topics[0].ref_ids == (1, 2)  # 9999 dropped
+    assert "@everyone" not in res.overview
+    assert res.topics[0].ref_ids == (1, 2)
     assert "@here" not in res.action_items[0].task
 
 
@@ -216,35 +215,32 @@ async def test_summarizer_runs_parallel_map_reduce_when_over_threshold() -> None
                     "segment_index": call_count,
                     "topics": [
                         {
-                            "title": "Kế hoạch dự án",
-                            "speakers": ["Minh", "Lan"],
-                            "details": "**Minh** đề xuất timeline; **Lan** đồng ý.",
+                            "title": "Release roadmap",
+                            "speakers": ["Alex", "Maya"],
+                            "details": "**Alex** proposed the release window; **Maya** agreed.",
                             "status": "decided",
                             "ref_ids": [1],
                         }
                     ],
-                    "decisions": ["**Minh** và **Lan** chốt timeline."],
-                },
-                ensure_ascii=False,
+                    "decisions": ["**Alex** and **Maya** confirmed the release timeline."],
+                }
             )
             return LLMResponse(content=seg_json, prompt_tokens=100, completion_tokens=50)
         final_json = json.dumps(
             {
-                "overview": "**Minh** và **Lan** đã chốt kế hoạch triển khai.",
+                "overview": "**Alex** and **Maya** finalized the release plan.",
                 "topics": [
                     {
-                        "emoji": "🚀",
-                        "title": "Kế hoạch triển khai",
-                        "speakers": ["Minh", "Lan"],
-                        "summary": "**Minh** đề xuất mốc ra mắt và **Lan** đã xác nhận.",
+                        "title": "Release plan",
+                        "speakers": ["Alex", "Maya"],
+                        "summary": "**Alex** proposed shipping next week and **Maya** confirmed.",
                         "status": "decided",
                         "ref_ids": [1, 10],
                     }
                 ],
-                "decisions": ["Chốt lịch ra mắt tuần sau."],
-                "action_items": [{"owner": "Minh", "task": "Chuẩn bị bản build", "ref_id": 10}],
-            },
-            ensure_ascii=False,
+                "decisions": ["Ship release build next week."],
+                "action_items": [{"owner": "Alex", "task": "Prepare release artifact", "ref_id": 10}],
+            }
         )
         return LLMResponse(content=final_json, prompt_tokens=150, completion_tokens=80)
 
@@ -254,7 +250,7 @@ async def test_summarizer_runs_parallel_map_reduce_when_over_threshold() -> None
     turns = [
         TranscriptTurn(
             ref_id=i,
-            text_line=f"[#{i} 14:{i:02d}] Minh: Nội dung thảo luận chi tiết số {i} về tiến độ và tính năng.",
+            text_line=f"[#{i} 14:{i:02d}] Alex: Detailed milestone discussion item {i} regarding release readiness and checks.",
             raw_msg_count=1,
         )
         for i in range(1, 15)
@@ -271,52 +267,50 @@ async def test_summarizer_runs_parallel_map_reduce_when_over_threshold() -> None
     result = await summarizer.summarize(
         creds=creds,
         channel_name="general",
-        time_range="14:00 – 14:15 UTC",
-        participants_summary="Minh (10 msgs), Lan (4 msgs)",
+        time_range="14:00 - 14:15 UTC",
+        participants_summary="Alex (10 msgs), Maya (4 msgs)",
         turns=turns,
         valid_ref_ids=set(range(1, 15)),
-        language_code="vi",
-        style_id="meta",
+        language_code="en",
+        style_id="standard",
     )
 
     assert result.strategy == "map_reduce"
     assert result.chunks_used >= 2
-    # Map calls (>=2) + 1 Reduce call
     assert call_count == result.chunks_used + 1
     assert result.topics[0].ref_ids == (1, 10)
 
 
 def test_embed_builder_hides_personal_mentions_on_public_share() -> None:
     conv = PreprocessedConversation(
-        turns=(TranscriptTurn(ref_id=1, text_line="[#1 14:00] Minh: Hi", raw_msg_count=1),),
+        turns=(TranscriptTurn(ref_id=1, text_line="[#1 14:00] Alex: Hi", raw_msg_count=1),),
         ref_to_jump_url={1: "https://discord.com/channels/1/2/101"},
         valid_ref_ids={1},
-        participants=(ParticipantStat(user_id=10, display_name="Minh", message_count=5),),
-        participants_summary="Minh (5 msgs)",
+        participants=(ParticipantStat(user_id=10, display_name="Alex", message_count=5),),
+        participants_summary="Alex (5 msgs)",
         requester_mentions=(
             MentionHit(
                 ref_id=1,
                 message_id=101,
-                author_name="Lan",
+                author_name="Maya",
                 timestamp_hhmm="14:05",
-                snippet="nhớ gửi slide nhé",
+                snippet="please share the slide deck",
                 jump_url="https://discord.com/channels/1/2/101",
             ),
         ),
         raw_message_count=5,
         kept_message_count=5,
-        time_range_label="14:00 – 14:10 UTC",
+        time_range_label="14:00 - 14:10 UTC",
     )
     summary = parse_and_validate_summary(
         json.dumps(
             {
-                "overview": "Nhóm bàn chuyện slide.",
+                "overview": "Team coordinated on the slide deck.",
                 "topics": [
                     {
-                        "emoji": "📊",
-                        "title": "Chuẩn bị slide",
-                        "speakers": ["Minh", "Lan"],
-                        "summary": "**Lan** nhắc gửi slide.",
+                        "title": "Slide deck prep",
+                        "speakers": ["Alex", "Maya"],
+                        "summary": "**Maya** asked for the slide deck.",
                         "status": "open",
                         "ref_ids": [1],
                     }
@@ -340,25 +334,24 @@ def test_embed_builder_hides_personal_mentions_on_public_share() -> None:
         result=summary,
         conv=conv,
         channel_name="general",
-        lang_code="vi",
-        style_id="meta",
+        lang_code="en",
+        style_id="standard",
         public_share=False,
     )
     public_embeds = build_summary_embeds(
         result=summary,
         conv=conv,
         channel_name="general",
-        lang_code="vi",
-        style_id="meta",
+        lang_code="en",
+        style_id="standard",
         public_share=True,
-        requester_display="Minh",
+        requester_display="Alex",
     )
 
     private_field_names = [f.name for f in private_embeds[0].fields]
     public_field_names = [f.name for f in public_embeds[0].fields]
-    assert any("Nhắc đến bạn" in n for n in private_field_names)
-    assert not any("Nhắc đến bạn" in n for n in public_field_names)
-    # Semantic accent restraint: terracotta only on private personal mentions, ink slate on public share
+    assert any("Mentions of you" in n for n in private_field_names)
+    assert not any("Mentions of you" in n for n in public_field_names)
     assert private_embeds[0].color.to_rgb() == (200, 109, 68)
     assert public_embeds[0].color.to_rgb() == (43, 48, 56)
 
@@ -386,10 +379,9 @@ async def test_bot_registers_all_slash_commands_and_context_menu(tmp_path) -> No
         "reset_config",
         "help",
         "tldr",
-        "TL;DR từ tin nhắn này",
+        "TL;DR from here",
     }.issubset(cmd_names)
 
-    # Verify HealthServer JSON response format (503 while starting, 200 when ready)
     from tldr_bot.health import HealthServer
 
     hs = HealthServer(bot, port=0)

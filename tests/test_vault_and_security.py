@@ -190,27 +190,42 @@ def test_secret_redactor() -> None:
     assert "custom_secret_token_77" not in cleaned
 
 
-def test_guild_language_preferences_sqlite_and_unslop_copy(tmp_path: Path) -> None:
+def test_guild_language_preferences_sqlite_and_copy_hygiene(tmp_path: Path) -> None:
     db_file = tmp_path / "tldr_bot.db"
-    store = GuildPreferencesStore(db_file, default_language="vi", persist=True)
-    assert store.get_language(555) == "vi"
+    store = GuildPreferencesStore(db_file, default_language="en", persist=True)
+    assert store.get_language(555) == "en"
 
-    store.set_language(555, "en")
+    store.set_language(555, "vi")
     store.close()
 
-    reloaded = GuildPreferencesStore(db_file, default_language="vi", persist=True)
-    assert reloaded.get_language(555) == "en"
-    reloaded.delete_guild(555)
+    reloaded = GuildPreferencesStore(db_file, default_language="en", persist=True)
     assert reloaded.get_language(555) == "vi"
+    reloaded.delete_guild(555)
+    assert reloaded.get_language(555) == "en"
     reloaded.close()
 
     assert "Permission denied" in t("en", "perm_role_too_low", bot_role="Bot")
-    assert "Không đủ quyền" in t("vi", "perm_role_too_low", bot_role="Bot")
+    assert t("vi", "perm_role_too_low", bot_role="Bot") != t("en", "perm_role_too_low", bot_role="Bot")
 
-    # Unslop copy guard: zero exclamation marks in any UI catalog string
+    # Copy hygiene guards: zero exclamation marks, em-dashes, en-dashes, or third-party AI brand copy
     for locale, strings in UI_STRINGS.items():
         for key, val in strings.items():
-            assert "!" not in val, f"Exclamation mark found in UI_STRINGS[{locale}][{key}]"
+            assert "!" not in val, f"Exclamation mark in UI_STRINGS[{locale}][{key}]"
+            assert "\u2014" not in val, f"Em-dash in UI_STRINGS[{locale}][{key}]"
+            assert "\u2013" not in val, f"En-dash in UI_STRINGS[{locale}][{key}]"
+            assert "meta ai" not in val.lower(), f"Third-party brand copy in UI_STRINGS[{locale}][{key}]"
+
+    from tldr_bot.llm.prompts import SUMMARY_STYLES
+
+    for style in SUMMARY_STYLES.values():
+        assert "\u2014" not in style.label
+        assert "meta ai" not in style.label.lower()
+        assert "meta ai" not in style.guidance.lower()
+
+    readme = Path("README.md").read_text(encoding="utf-8")
+    assert "\u2014" not in readme
+    assert "\u2013" not in readme
+    assert "meta ai" not in readme.lower()
 
 
 @pytest.mark.asyncio
