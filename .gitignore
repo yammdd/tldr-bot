@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg
+*.egg-info/
+.venv/
+venv/
+ENV/
+dist/
+build/
+
+# Testing & linters
+.pytest_cache/
+.pytest_tmp/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets, local databases & runtime data
+.env
+.env.*
+!.env.example
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.enc
+*.key
+*.pem
+*.log
+*.tmp
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
