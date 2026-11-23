@@ -21,7 +21,7 @@ PROVIDER_PRESETS: tuple[ProviderPreset, ...] = (
     ProviderPreset(
         id="gemini",
         name="Google Gemini",
-        description="1M context window, fast for 500–1500 message threads",
+        description="1M context window, fast for 500 to 1,500 message threads",
         default_base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
         default_model="gemini-3.8-flash",
     ),

@@ -9,7 +9,7 @@ from typing import Literal
 
 from dotenv import load_dotenv
 
-SUPPORTED_LANGUAGES: tuple[str, ...] = ("vi", "en", "ja", "ko", "zh", "auto")
+SUPPORTED_LANGUAGES: tuple[str, ...] = ("en", "vi", "ja", "ko", "zh", "auto")
 
 
 def _parse_bool(raw: str | None, default: bool = False) -> bool:
@@ -34,7 +34,7 @@ class Settings:
     key_storage_mode: Literal["encrypted", "memory"] = "encrypted"
     vault_master_key: str = ""
     db_file_path: Path = Path("data/tldr_bot.db")
-    default_language: str = "vi"
+    default_language: str = "en"
 
     # Message & context budget limits
     max_messages_hard_cap: int = 1500
@@ -75,8 +75,8 @@ class Settings:
             "memory" if raw_mode == "memory" else "encrypted"
         )
 
-        raw_lang = (os.getenv("DEFAULT_LANGUAGE") or "vi").strip().lower()
-        default_lang = raw_lang if raw_lang in SUPPORTED_LANGUAGES else "vi"
+        raw_lang = (os.getenv("DEFAULT_LANGUAGE") or "en").strip().lower()
+        default_lang = raw_lang if raw_lang in SUPPORTED_LANGUAGES else "en"
 
         raw_dev_guild = (os.getenv("DEV_GUILD_ID") or "").strip()
         dev_guild_id = int(raw_dev_guild) if raw_dev_guild.isdigit() else None

@@ -45,7 +45,7 @@ class AdminCog(commands.Cog):
 
     @app_commands.command(
         name="config",
-        description="Thiết lập API Key, Endpoint & Model bảo mật (chỉ Owner hoặc Role cao hơn Bot)",
+        description="Configure API Key, Endpoint, and Model privately (Owner or Role above Bot)",
     )
     @app_commands.guild_only()
     async def config_command(self, interaction: discord.Interaction) -> None:
@@ -69,11 +69,11 @@ class AdminCog(commands.Cog):
 
     @app_commands.command(
         name="model",
-        description="Chọn hoặc đổi Model từ API hiện tại mà không cần nhập lại Key (chỉ Owner/Role > Bot)",
+        description="Switch active LLM model without re-entering the API key (Owner or Role above Bot)",
     )
     @app_commands.guild_only()
     @app_commands.describe(
-        model_id="Tùy chọn: nhập thẳng Model ID muốn đổi (để trống để tự tải danh sách từ API)"
+        model_id="Optional: enter a Model ID directly, or leave blank to list models from your endpoint"
     )
     async def model_command(
         self,
@@ -158,10 +158,10 @@ class AdminCog(commands.Cog):
 
     @app_commands.command(
         name="language",
-        description="Đổi ngôn ngữ mặc định cho bot và bản tóm tắt (chỉ Owner hoặc Role cao hơn Bot)",
+        description="Set the server default language for bot UI and summaries (Owner or Role above Bot)",
     )
     @app_commands.guild_only()
-    @app_commands.describe(language="Ngôn ngữ mặc định của server")
+    @app_commands.describe(language="Server default language")
     @app_commands.choices(language=LANGUAGE_CHOICES)
     async def language_command(
         self,
@@ -180,13 +180,13 @@ class AdminCog(commands.Cog):
 
     @app_commands.command(
         name="status",
-        description="Xem trạng thái cấu hình hiện tại của bot (không bao giờ hiển thị API Key)",
+        description="View active bot configuration and limits (never displays the API key)",
     )
     @app_commands.guild_only()
     async def status_command(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:
-            await interaction.response.send_message(t("vi", "guild_only"), ephemeral=True)
+            await interaction.response.send_message(t("en", "guild_only"), ephemeral=True)
             return
 
         lang = self.bot.prefs.get_language(guild.id)
@@ -209,7 +209,7 @@ class AdminCog(commands.Cog):
         if status.configured:
             embed.add_field(
                 name=t(lang, "status_field_provider"),
-                value=f"**{status.provider_name}** · `{status.endpoint_host}`",
+                value=f"**{status.provider_name}** | `{status.endpoint_host}`",
                 inline=True,
             )
             embed.add_field(
@@ -239,7 +239,7 @@ class AdminCog(commands.Cog):
 
     @app_commands.command(
         name="reset_config",
-        description="Xóa API Key và cấu hình LLM của server (chỉ Owner hoặc Role cao hơn Bot)",
+        description="Delete the server's saved API key and LLM configuration (Owner or Role above Bot)",
     )
     @app_commands.guild_only()
     async def reset_config_command(self, interaction: discord.Interaction) -> None:
@@ -255,7 +255,7 @@ class AdminCog(commands.Cog):
 
     @app_commands.command(
         name="help",
-        description="Hướng dẫn thiết lập và sử dụng TL;DR Bot",
+        description="Quick setup and usage guide for TL;DR Bot",
     )
     async def help_command(self, interaction: discord.Interaction) -> None:
         guild_id = interaction.guild.id if interaction.guild else None

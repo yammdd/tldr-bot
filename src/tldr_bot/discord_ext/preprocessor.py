@@ -156,7 +156,7 @@ def _format_attachments_and_embeds(msg: Any) -> str:
         title = str(getattr(embed, "title", "") or "").strip()
         desc = str(getattr(embed, "description", "") or "").strip()
         if title:
-            short_desc = f" — {desc[:90]}" if desc else ""
+            short_desc = f" - {desc[:90]}" if desc else ""
             tags.append(f"[embed: {title[:80]}{short_desc}]")
         elif desc:
             tags.append(f"[embed: {desc[:110]}]")
@@ -251,7 +251,7 @@ def _format_gap_label(delta_seconds: float, ts: datetime) -> str:
         gap_str = f"{hours}h{rem_mins:02d}m" if rem_mins else f"{hours}h"
     else:
         gap_str = f"{mins}m"
-    return f"=== [Gap {gap_str} • {ts.strftime('%m-%d %H:%M')}] ==="
+    return f"=== [Gap {gap_str} | {ts.strftime('%m-%d %H:%M')}] ==="
 
 
 def _format_time_range(messages: Sequence[Any]) -> str:
@@ -260,8 +260,8 @@ def _format_time_range(messages: Sequence[Any]) -> str:
     first_ts = _msg_timestamp(messages[0])
     last_ts = _msg_timestamp(messages[-1])
     if first_ts.date() == last_ts.date():
-        return f"{first_ts.strftime('%H:%M')} – {last_ts.strftime('%H:%M')} UTC"
-    return f"{first_ts.strftime('%d/%m %H:%M')} – {last_ts.strftime('%d/%m %H:%M')} UTC"
+        return f"{first_ts.strftime('%H:%M')} - {last_ts.strftime('%H:%M')} UTC"
+    return f"{first_ts.strftime('%d/%m %H:%M')} - {last_ts.strftime('%d/%m %H:%M')} UTC"
 
 
 def extract_requester_mentions(

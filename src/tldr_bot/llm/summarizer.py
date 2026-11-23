@@ -306,7 +306,7 @@ class ConversationSummarizer:
         turns: Sequence[TranscriptTurn],
         valid_ref_ids: set[int],
         language_code: str,
-        style_id: str = "meta",
+        style_id: str = "standard",
         focus_query: str | None = None,
         on_stage_update: ProgressCallback | None = None,
     ) -> SummaryResult:
@@ -347,7 +347,7 @@ class ConversationSummarizer:
                 creds,
                 messages,
                 max_tokens=2600 if style_id == "detailed" else 2000,
-                temperature=0.35 if style_id == "fun" else 0.15,
+                temperature=0.35 if style_id in {"casual", "fun"} else 0.15,
                 json_mode=True,
             )
             total_prompt_tokens = resp.prompt_tokens
@@ -408,7 +408,7 @@ class ConversationSummarizer:
                 creds,
                 reduce_msgs,
                 max_tokens=2600 if style_id == "detailed" else 2100,
-                temperature=0.35 if style_id == "fun" else 0.15,
+                temperature=0.35 if style_id in {"casual", "fun"} else 0.15,
                 json_mode=True,
             )
             total_prompt_tokens += reduce_resp.prompt_tokens

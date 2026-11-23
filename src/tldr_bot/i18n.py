@@ -1,4 +1,4 @@
-"""Internationalization (i18n) catalog (unslopped editorial copy) and SQLite guild preferences store."""
+"""Internationalization (i18n) catalog and SQLite guild preferences store."""
 
 from __future__ import annotations
 
@@ -16,234 +16,51 @@ from tldr_bot.storage.database import open_sqlite_wal
 class LanguageSpec:
     code: str
     native_label: str
-    ui_locale: str  # "vi" or "en"
+    ui_locale: str  # "en" or "vi"
     llm_instruction: str
 
 
 LANGUAGE_SPECS: dict[str, LanguageSpec] = {
-    "vi": LanguageSpec(
-        code="vi",
-        native_label="Tiếng Việt",
-        ui_locale="vi",
-        llm_instruction="Vietnamese (Tiếng Việt tự nhiên, rõ ràng, súc tích)",
-    ),
     "en": LanguageSpec(
         code="en",
         native_label="English",
         ui_locale="en",
         llm_instruction="English (clear, natural, concise)",
     ),
+    "vi": LanguageSpec(
+        code="vi",
+        native_label="Vietnamese (Tiếng Việt)",
+        ui_locale="vi",
+        llm_instruction="Vietnamese (natural, clear, concise)",
+    ),
     "ja": LanguageSpec(
         code="ja",
-        native_label="日本語 (Japanese)",
+        native_label="Japanese (日本語)",
         ui_locale="en",
-        llm_instruction="Japanese (自然な日本語で簡潔かつ正確に)",
+        llm_instruction="Japanese (natural, concise, accurate)",
     ),
     "ko": LanguageSpec(
         code="ko",
-        native_label="한국어 (Korean)",
+        native_label="Korean (한국어)",
         ui_locale="en",
-        llm_instruction="Korean (자연스럽고 간결한 한국어로)",
+        llm_instruction="Korean (natural, concise, accurate)",
     ),
     "zh": LanguageSpec(
         code="zh",
-        native_label="中文 (Chinese)",
+        native_label="Chinese (中文)",
         ui_locale="en",
-        llm_instruction="Simplified Chinese (自然、简洁、准确的简体中文)",
+        llm_instruction="Simplified Chinese (natural, concise, accurate)",
     ),
     "auto": LanguageSpec(
         code="auto",
-        native_label="Tự động theo đoạn chat (Auto)",
-        ui_locale="vi",
-        llm_instruction=(
-            "the SAME dominant language used by the speakers in the conversation "
-            "(if mixed Vietnamese and English, prefer Vietnamese)"
-        ),
+        native_label="Auto-detect from chat",
+        ui_locale="en",
+        llm_instruction="the SAME dominant language used by the speakers in the conversation",
     ),
 }
 
 
 UI_STRINGS: dict[str, dict[str, str]] = {
-    "vi": {
-        # Permissions & guards
-        "guild_only": "Lệnh này chỉ hoạt động trong server Discord",
-        "perm_role_too_low": (
-            "Không đủ quyền. Chỉ Chủ server (Owner) hoặc thành viên có Role cao hơn "
-            "`{bot_role}` mới được thay đổi API Key, Endpoint hoặc cấu hình bot."
-        ),
-        "perm_no_channel_history": (
-            "Bot thiếu quyền View Channel hoặc Read Message History tại kênh này"
-        ),
-        "not_configured": (
-            "Server này chưa thiết lập API Key và Endpoint. "
-            "Người có Role cao hơn Bot hãy dùng `/config` để cấu hình một lần duy nhất."
-        ),
-        "cooldown_wait": "Vui lòng chờ **{seconds:.1f}s** trước lần tóm tắt tiếp theo",
-        "guild_busy": (
-            "Server đang xử lý tối đa số lượt tóm tắt đồng thời. Vui lòng thử lại sau vài giây."
-        ),
-        "global_busy": (
-            "Hệ thống đang xử lý lưu lượng cao. Vui lòng thử lại sau vài giây."
-        ),
-        "invalid_count": (
-            "Số tin nhắn phải nằm trong khoảng **{min_count} – {max_count}** để giữ tốc độ và độ chính xác"
-        ),
-        "invalid_since": (
-            "Khoảng thời gian không hợp lệ. Ví dụ: `30m`, `2h`, `12h`, `24h`, `3d`, `7d`, `today` (tối đa **{max_days} ngày**)"
-        ),
-        # /config flow
-        "config_panel_title": "Cấu hình API Key & Endpoint",
-        "config_panel_desc": (
-            "Chọn nhà cung cấp bên dưới hoặc **Custom Endpoint** để mở biểu mẫu riêng tư.\n"
-            "• Dữ liệu nhập qua Modal ẩn, không hiển thị trong kênh chat\n"
-            "• Bot chạy kiểm tra kết nối thật trước khi lưu; nếu lỗi sẽ giữ nguyên cấu hình cũ\n"
-            "• Chế độ lưu trữ: `{storage_mode}` · Write-Only (không thể xem lại key)"
-        ),
-        "config_select_placeholder": "Chọn nhà cung cấp API",
-        "config_modal_title": "Thiết lập {provider_name}",
-        "config_field_apikey": "API Key (Write-Only)",
-        "config_field_endpoint": "Endpoint Base URL",
-        "config_field_model": "Model ID (vd: {default_model})",
-        "config_testing": "Đang kiểm tra kết nối với **{provider_name}** (`{model}`)...",
-        "config_success": (
-            "Xác thực thành công · `{latency_ms}ms`\n"
-            "• Provider: **{provider_name}**\n"
-            "• Endpoint: `{endpoint_host}`\n"
-            "• Model: `{model}`\n"
-            "• Lưu trữ: `{storage_mode}` (Write-Only)\n\n"
-            "Server đã sẵn sàng dùng `/tldr` hoặc chuột phải tin nhắn → Apps → **TL;DR từ tin nhắn này**."
-        ),
-        "config_failed_keep_old": (
-            "Xác thực API Key thất bại — cấu hình cũ (nếu có) vẫn được giữ nguyên.\n"
-            "• Lý do: {error}\n"
-            "• Kiểm tra lại API Key, Endpoint URL, Model ID hoặc số dư tài khoản rồi chạy lại `/config`."
-        ),
-        "config_reset_done": "Đã xóa API Key và cấu hình LLM của server này khỏi kho lưu trữ",
-        "config_reset_empty": "Server này hiện chưa có cấu hình API Key nào",
-        # /model
-        "model_panel_title": "Chọn Model",
-        "model_panel_desc": (
-            "Provider: **{provider_name}** · `{endpoint_host}`\n"
-            "Model đang dùng: `{current_model}` · Tìm thấy **{count}** model chat\n\n"
-            "Chọn model bên dưới hoặc bấm **Nhập thủ công**. Bot sẽ kiểm tra kết nối thật trước khi chuyển."
-        ),
-        "model_panel_no_list": (
-            "Provider: **{provider_name}** · `{endpoint_host}`\n"
-            "Model đang dùng: `{current_model}`\n\n"
-            "Endpoint này không trả về danh sách `/models` ({reason}). Bấm **Nhập thủ công** để đổi model."
-        ),
-        "model_select_placeholder": "Chọn model ({start}–{end} / {total})",
-        "model_option_active": "Đang dùng",
-        "model_btn_manual": "Nhập thủ công",
-        "model_modal_title": "Đổi Model ID",
-        "model_modal_field": "Model ID mới",
-        "model_testing": "Đang kiểm tra model `{model}` trên **{provider_name}**...",
-        "model_switched": (
-            "Đã chuyển model · `{latency_ms}ms`\n"
-            "• Provider: **{provider_name}** (`{endpoint_host}`)\n"
-            "• Model mới: `{model}`"
-        ),
-        "model_failed_keep_old": (
-            "Không thể chuyển sang `{new_model}` — vẫn giữ model cũ `{old_model}`.\n"
-            "• Lý do: {error}"
-        ),
-        # /language
-        "lang_updated": "Ngôn ngữ mặc định của server đã đổi sang **{language_label}**",
-        "lang_current": "Ngôn ngữ hiện tại: **{language_label}**",
-        # /status
-        "status_title": "Trạng thái TL;DR",
-        "status_configured_yes": "Đã cấu hình · Write-Only",
-        "status_configured_no": "Chưa cấu hình (dùng `/config`)",
-        "status_field_state": "Trạng thái",
-        "status_field_provider": "Provider · Endpoint",
-        "status_field_model": "Model",
-        "status_field_lang": "Ngôn ngữ mặc định",
-        "status_field_limits": "Giới hạn ngữ cảnh",
-        "status_limits_val": (
-            "`{max_msgs}` tin/lần · `{max_days}` ngày · `{max_tokens:,}` input tokens · `{storage_mode}`"
-        ),
-        "status_footer": "Write-Only · API Key không bao giờ được hiển thị lại",
-        # /help
-        "help_title": "Hướng dẫn TL;DR",
-        "help_desc": (
-            "Tóm tắt 5–1.500 tin nhắn bị bỏ lỡ theo chủ đề, ghi rõ ai đã nói gì, "
-            "quyết định đã chốt và lời nhắc dành riêng cho bạn."
-        ),
-        "help_setup_header": "Thiết lập cho quản trị viên (chỉ 1 lần)",
-        "help_setup_body": (
-            "1. Vào **Server Settings → Roles**, kéo Role của Bot xuống dưới Role Admin/Mod\n"
-            "2. Gõ `/config`, chọn Provider (Gemini, DeepSeek, OpenAI, Claude, Custom...) và dán API Key trong hộp thoại riêng tư\n"
-            "3. Tùy chọn: dùng `/model` để chọn nhanh trong danh sách model của key, `/language` để đổi ngôn ngữ mặc định"
-        ),
-        "help_usage_header": "Cách dùng cho mọi thành viên",
-        "help_usage_body": (
-            "• `/tldr count:500` — tóm tắt 500 tin nhắn gần nhất\n"
-            "• `/tldr since:6h` — tóm tắt theo mốc thời gian (`30m`, `2h`, `24h`, `3d`, `today`)\n"
-            "• Chuột phải tin nhắn → **Apps → TL;DR từ tin nhắn này** — tóm tắt từ đúng vạch tin chưa đọc\n"
-            "• Kết quả mặc định chỉ mình bạn thấy; dùng nút **Chia sẻ** để đăng công khai nếu cần"
-        ),
-        "help_footer": "Write-Only · Không lưu nội dung tin nhắn chat lên ổ đĩa",
-        "unexpected_command_error": "Đã xảy ra lỗi ngoài dự kiến khi xử lý lệnh. Vui lòng thử lại sau.",
-        # /tldr progress & results
-        "progress_fetching": "Đang tải lịch sử `#{channel}` · {fetched} tin",
-        "progress_analyzing": (
-            "`{fetched} → {lines}` dòng (~{tokens:,} tok) · Đang tóm tắt bằng `{model}`..."
-        ),
-        "progress_map_reduce": (
-            "Hội thoại dài ({fetched} tin, ~{tokens:,} tok) · Đang xử lý song song {chunks} phân đoạn bằng `{model}`..."
-        ),
-        "no_messages_found": "Không có đủ nội dung trò chuyện hợp lệ trong khoảng đã chọn",
-        "summary_title": "TL;DR · #{channel}",
-        "summary_participants": "Tham gia ({count}): {list}",
-        "summary_topics_header": "Các chủ đề chính",
-        "summary_decisions_header": "Đã chốt & Việc cần làm",
-        "summary_open_header": "Còn bỏ ngỏ",
-        "summary_highlights_header": "Link & Tài liệu",
-        "summary_mentions_header": "Nhắc đến bạn",
-        "summary_by_person_header": "Theo từng người tham gia",
-        "summary_jump_link": "xem",
-        "summary_jump_full": "tới tin nhắn",
-        "summary_capped_note": (
-            "Ghi chú: giới hạn trong {used:,}/{fetched:,} tin gần nhất để giữ độ chính xác."
-        ),
-        "summary_cache_badge": " · cache",
-        "summary_footer": (
-            "Chỉ mình bạn thấy · {fetched} → {lines} · {tokens:,} tok · {elapsed:.1f}s · {model}{cache_badge}"
-        ),
-        "summary_public_footer": (
-            "Chia sẻ bởi {requester} · {fetched} tin · {time_range} · {model}"
-        ),
-        # Status tags (quiet bracketed text)
-        "topic_status_decided": "Đã chốt",
-        "topic_status_open": "Chưa chốt",
-        "topic_status_resolved": "Đã xử lý",
-        "topic_status_info": "",
-        # Buttons (short, clean, zero emoji)
-        "btn_share": "Chia sẻ",
-        "btn_by_person": "Theo từng người",
-        "btn_detailed": "Chi tiết hơn",
-        "btn_refresh": "Tạo lại",
-        "btn_prev": "Trước",
-        "btn_next": "Sau",
-        "btn_shared_ok": "Đã chia sẻ bản tóm tắt ra kênh (đã tắt mọi ping)",
-        "btn_working": "Đang cập nhật bản tóm tắt...",
-        "btn_expired": "Phiên tóm tắt đã hết hạn. Vui lòng chạy lại `/tldr`.",
-        # Errors
-        "err_ssrf_scheme": "Endpoint phải bắt đầu bằng `https://`",
-        "err_ssrf_private": "Endpoint bị chặn vì trỏ vào địa chỉ mạng nội bộ hoặc localhost",
-        "err_ssrf_invalid": "Định dạng Endpoint URL không hợp lệ",
-        "err_ssrf_dns": "Không thể phân giải tên miền của Endpoint URL",
-        "err_auth": "API Key không hợp lệ hoặc đã bị thu hồi (HTTP 401). Người có Role cao hơn Bot hãy cập nhật qua `/config`.",
-        "err_forbidden": "API Key không có quyền gọi model này hoặc bị hạn chế khu vực (HTTP 403)",
-        "err_quota": "API Key hết số dư hoặc vượt giới hạn tốc độ (HTTP 402/429). Thử lại sau hoặc đổi key qua `/config`.",
-        "err_not_found": "Không tìm thấy model `{model}` hoặc sai Endpoint (HTTP 404): {detail}",
-        "err_bad_request": "Endpoint từ chối yêu cầu (HTTP 400): {detail}",
-        "err_server": "Máy chủ API đang gặp sự cố tạm thời (HTTP 5xx). Vui lòng thử lại sau.",
-        "err_timeout": "Quá thời gian chờ phản hồi từ Endpoint. Thử lại hoặc giảm số lượng tin nhắn.",
-        "err_connection": "Không thể kết nối tới Endpoint URL",
-        "err_unknown": "Lỗi gọi API: {detail}",
-        "summary_failed": "Không thể tạo bản tóm tắt.\n{error}",
-    },
     "en": {
         "guild_only": "This command only works inside a Discord server",
         "perm_role_too_low": (
@@ -273,9 +90,9 @@ UI_STRINGS: dict[str, dict[str, str]] = {
         "config_panel_title": "Configure API Key & Endpoint",
         "config_panel_desc": (
             "Select a provider below or choose **Custom Endpoint** to open the private modal.\n"
-            "• Credentials are submitted privately and never touch chat history\n"
-            "• A tiny live smoke test verifies Key, Endpoint, and Model before saving\n"
-            "• Storage mode: `{storage_mode}` · Write-Only (keys can never be viewed)"
+            "- Credentials are submitted privately and never touch chat history\n"
+            "- A tiny live smoke test verifies Key, Endpoint, and Model before saving\n"
+            "- Storage mode: `{storage_mode}` | Write-Only (keys can never be viewed)"
         ),
         "config_select_placeholder": "Select an API provider",
         "config_modal_title": "Configure {provider_name}",
@@ -284,89 +101,89 @@ UI_STRINGS: dict[str, dict[str, str]] = {
         "config_field_model": "Model ID (e.g. {default_model})",
         "config_testing": "Verifying connection to **{provider_name}** (`{model}`)...",
         "config_success": (
-            "Verification passed · `{latency_ms}ms`\n"
-            "• Provider: **{provider_name}**\n"
-            "• Endpoint: `{endpoint_host}`\n"
-            "• Model: `{model}`\n"
-            "• Storage: `{storage_mode}` (Write-Only)\n\n"
-            "Ready to use `/tldr` or right-click a message → Apps → **TL;DR từ tin nhắn này**."
+            "Verification passed (`{latency_ms}ms`)\n"
+            "- Provider: **{provider_name}**\n"
+            "- Endpoint: `{endpoint_host}`\n"
+            "- Model: `{model}`\n"
+            "- Storage: `{storage_mode}` (Write-Only)\n\n"
+            "Ready to use `/tldr` or right-click a message > Apps > **TL;DR from here**."
         ),
         "config_failed_keep_old": (
-            "API Key verification failed — existing configuration (if any) remains unchanged.\n"
-            "• Reason: {error}\n"
-            "• Check your API Key, Endpoint URL, Model ID, or balance and retry `/config`."
+            "API Key verification failed. Existing configuration (if any) remains unchanged.\n"
+            "- Reason: {error}\n"
+            "- Check your API Key, Endpoint URL, Model ID, or balance and retry `/config`."
         ),
         "config_reset_done": "Cleared this server's API Key and LLM configuration",
         "config_reset_empty": "This server has no saved API configuration",
         "model_panel_title": "Select Model",
         "model_panel_desc": (
-            "Provider: **{provider_name}** · `{endpoint_host}`\n"
-            "Current model: `{current_model}` · Found **{count}** chat models\n\n"
+            "Provider: **{provider_name}** | `{endpoint_host}`\n"
+            "Current model: `{current_model}` | Found **{count}** chat models\n\n"
             "Pick a model below or click **Enter manually**. A live smoke test runs before switching."
         ),
         "model_panel_no_list": (
-            "Provider: **{provider_name}** · `{endpoint_host}`\n"
+            "Provider: **{provider_name}** | `{endpoint_host}`\n"
             "Current model: `{current_model}`\n\n"
             "This endpoint did not return a `/models` list ({reason}). Click **Enter manually** to set a model ID."
         ),
-        "model_select_placeholder": "Choose a model ({start}–{end} of {total})",
+        "model_select_placeholder": "Choose a model ({start}-{end} of {total})",
         "model_option_active": "Active",
         "model_btn_manual": "Enter manually",
         "model_modal_title": "Switch Model ID",
         "model_modal_field": "New Model ID",
         "model_testing": "Testing model `{model}` on **{provider_name}**...",
         "model_switched": (
-            "Switched model · `{latency_ms}ms`\n"
-            "• Provider: **{provider_name}** (`{endpoint_host}`)\n"
-            "• Active model: `{model}`"
+            "Switched model (`{latency_ms}ms`)\n"
+            "- Provider: **{provider_name}** (`{endpoint_host}`)\n"
+            "- Active model: `{model}`"
         ),
         "model_failed_keep_old": (
-            "Could not switch to `{new_model}` — kept previous model `{old_model}`.\n"
-            "• Reason: {error}"
+            "Could not switch to `{new_model}`. Kept previous model `{old_model}`.\n"
+            "- Reason: {error}"
         ),
         "lang_updated": "Server default language set to **{language_label}**",
         "lang_current": "Current language: **{language_label}**",
         "status_title": "TL;DR Status",
-        "status_configured_yes": "Configured · Write-Only",
+        "status_configured_yes": "Configured | Write-Only",
         "status_configured_no": "Not configured (run `/config`)",
         "status_field_state": "Status",
-        "status_field_provider": "Provider · Endpoint",
+        "status_field_provider": "Provider & Endpoint",
         "status_field_model": "Model",
         "status_field_lang": "Default language",
         "status_field_limits": "Context limits",
         "status_limits_val": (
-            "`{max_msgs}` msgs/run · `{max_days}` days · `{max_tokens:,}` input tokens · `{storage_mode}`"
+            "`{max_msgs}` msgs/run | `{max_days}` days | `{max_tokens:,}` input tokens | `{storage_mode}`"
         ),
-        "status_footer": "Write-Only · API keys are never displayed",
+        "status_footer": "Write-Only | API keys are never displayed",
         "help_title": "TL;DR Guide",
         "help_desc": (
-            "Distills 5–1,500 missed channel messages into speaker-attributed topics, "
+            "Distills 5 to 1,500 unread channel messages into speaker-attributed topics, "
             "decisions, open questions, and personal mentions."
         ),
         "help_setup_header": "Admin setup (one-time)",
         "help_setup_body": (
-            "1. In **Server Settings → Roles**, drag the Bot role below your Admin/Mod roles\n"
+            "1. In **Server Settings > Roles**, place the Bot role below your Admin/Mod roles\n"
             "2. Run `/config`, choose a provider (Gemini, DeepSeek, OpenAI, Claude, Custom...), and paste your API Key privately\n"
             "3. Optional: run `/model` to switch models without re-entering your key, or `/language` to change the default language"
         ),
         "help_usage_header": "Everyday usage",
         "help_usage_body": (
-            "• `/tldr count:500` — summarize the last 500 messages\n"
-            "• `/tldr since:6h` — summarize by timeframe (`30m`, `2h`, `24h`, `3d`, `today`)\n"
-            "• Right-click any message → **Apps → TL;DR từ tin nhắn này** — catch up from that exact message\n"
-            "• Summaries are private by default; click **Share** to post publicly if needed"
+            "- `/tldr count:500`: summarize the last 500 messages\n"
+            "- `/tldr since:6h`: summarize by timeframe (`30m`, `2h`, `24h`, `3d`, `today`)\n"
+            "- Right-click any message > **Apps > TL;DR from here**: catch up from that exact message\n"
+            "- Summaries are private by default; click **Share** to post publicly if needed"
         ),
-        "help_footer": "Write-Only · Chat messages are never stored on disk",
+        "help_footer": "Write-Only | Chat messages are never stored on disk",
         "unexpected_command_error": "An unexpected error occurred while running that command. Please try again.",
-        "progress_fetching": "Fetching `#{channel}` · {fetched} messages",
+        "progress_fetching": "Fetching `#{channel}` | {fetched} messages",
         "progress_analyzing": (
-            "`{fetched} → {lines}` turns (~{tokens:,} tok) · Summarizing with `{model}`..."
+            "`{fetched} -> {lines}` turns (~{tokens:,} tok) | Summarizing with `{model}`..."
         ),
         "progress_map_reduce": (
-            "Long thread ({fetched} msgs, ~{tokens:,} tok) · Running {chunks} parallel segments with `{model}`..."
+            "Long thread ({fetched} msgs, ~{tokens:,} tok) | Running {chunks} parallel segments with `{model}`..."
         ),
         "no_messages_found": "Not enough meaningful messages found in the selected range",
-        "summary_title": "TL;DR · #{channel}",
+        "summary_title": "TL;DR | #{channel}",
         "summary_participants": "Participants ({count}): {list}",
         "summary_topics_header": "Key topics",
         "summary_decisions_header": "Decisions & action items",
@@ -379,12 +196,12 @@ UI_STRINGS: dict[str, dict[str, str]] = {
         "summary_capped_note": (
             "Note: capped to the most recent {used:,}/{fetched:,} messages to maintain accuracy."
         ),
-        "summary_cache_badge": " · cache",
+        "summary_cache_badge": " | cache",
         "summary_footer": (
-            "Only visible to you · {fetched} → {lines} · {tokens:,} tok · {elapsed:.1f}s · {model}{cache_badge}"
+            "Only visible to you | {fetched} -> {lines} | {tokens:,} tok | {elapsed:.1f}s | {model}{cache_badge}"
         ),
         "summary_public_footer": (
-            "Shared by {requester} · {fetched} msgs · {time_range} · {model}"
+            "Shared by {requester} | {fetched} msgs | {time_range} | {model}"
         ),
         "topic_status_decided": "Decided",
         "topic_status_open": "Open",
@@ -414,14 +231,184 @@ UI_STRINGS: dict[str, dict[str, str]] = {
         "err_unknown": "API error: {detail}",
         "summary_failed": "Could not generate summary.\n{error}",
     },
+    "vi": {
+        "guild_only": "Lệnh này chỉ hoạt động trong server Discord",
+        "perm_role_too_low": (
+            "Không đủ quyền. Chỉ Chủ server (Owner) hoặc thành viên có Role cao hơn "
+            "`{bot_role}` mới được thay đổi API Key, Endpoint hoặc cấu hình bot."
+        ),
+        "perm_no_channel_history": (
+            "Bot thiếu quyền View Channel hoặc Read Message History tại kênh này"
+        ),
+        "not_configured": (
+            "Server này chưa thiết lập API Key và Endpoint. "
+            "Người có Role cao hơn Bot hãy dùng `/config` để cấu hình một lần duy nhất."
+        ),
+        "cooldown_wait": "Vui lòng chờ **{seconds:.1f}s** trước lần tóm tắt tiếp theo",
+        "guild_busy": (
+            "Server đang xử lý tối đa số lượt tóm tắt đồng thời. Vui lòng thử lại sau vài giây."
+        ),
+        "global_busy": (
+            "Hệ thống đang xử lý lưu lượng cao. Vui lòng thử lại sau vài giây."
+        ),
+        "invalid_count": (
+            "Số tin nhắn phải nằm trong khoảng **{min_count} đến {max_count}** để giữ tốc độ và độ chính xác"
+        ),
+        "invalid_since": (
+            "Khoảng thời gian không hợp lệ. Ví dụ: `30m`, `2h`, `12h`, `24h`, `3d`, `7d`, `today` (tối đa **{max_days} ngày**)"
+        ),
+        "config_panel_title": "Cấu hình API Key & Endpoint",
+        "config_panel_desc": (
+            "Chọn nhà cung cấp bên dưới hoặc **Custom Endpoint** để mở biểu mẫu riêng tư.\n"
+            "- Dữ liệu nhập qua Modal ẩn, không hiển thị trong kênh chat\n"
+            "- Bot chạy kiểm tra kết nối thật trước khi lưu; nếu lỗi sẽ giữ nguyên cấu hình cũ\n"
+            "- Chế độ lưu trữ: `{storage_mode}` | Write-Only (không thể xem lại key)"
+        ),
+        "config_select_placeholder": "Chọn nhà cung cấp API",
+        "config_modal_title": "Thiết lập {provider_name}",
+        "config_field_apikey": "API Key (Write-Only)",
+        "config_field_endpoint": "Endpoint Base URL",
+        "config_field_model": "Model ID (vd: {default_model})",
+        "config_testing": "Đang kiểm tra kết nối với **{provider_name}** (`{model}`)...",
+        "config_success": (
+            "Xác thực thành công (`{latency_ms}ms`)\n"
+            "- Provider: **{provider_name}**\n"
+            "- Endpoint: `{endpoint_host}`\n"
+            "- Model: `{model}`\n"
+            "- Lưu trữ: `{storage_mode}` (Write-Only)\n\n"
+            "Server đã sẵn sàng dùng `/tldr` hoặc chuột phải tin nhắn > Apps > **TL;DR from here**."
+        ),
+        "config_failed_keep_old": (
+            "Xác thực API Key thất bại. Cấu hình cũ (nếu có) vẫn được giữ nguyên.\n"
+            "- Lý do: {error}\n"
+            "- Kiểm tra lại API Key, Endpoint URL, Model ID hoặc số dư tài khoản rồi chạy lại `/config`."
+        ),
+        "config_reset_done": "Đã xóa API Key và cấu hình LLM của server này khỏi kho lưu trữ",
+        "config_reset_empty": "Server này hiện chưa có cấu hình API Key nào",
+        "model_panel_title": "Chọn Model",
+        "model_panel_desc": (
+            "Provider: **{provider_name}** | `{endpoint_host}`\n"
+            "Model đang dùng: `{current_model}` | Tìm thấy **{count}** model chat\n\n"
+            "Chọn model bên dưới hoặc bấm **Nhập thủ công**. Bot sẽ kiểm tra kết nối thật trước khi chuyển."
+        ),
+        "model_panel_no_list": (
+            "Provider: **{provider_name}** | `{endpoint_host}`\n"
+            "Model đang dùng: `{current_model}`\n\n"
+            "Endpoint này không trả về danh sách `/models` ({reason}). Bấm **Nhập thủ công** để đổi model."
+        ),
+        "model_select_placeholder": "Chọn model ({start}-{end} / {total})",
+        "model_option_active": "Đang dùng",
+        "model_btn_manual": "Nhập thủ công",
+        "model_modal_title": "Đổi Model ID",
+        "model_modal_field": "Model ID mới",
+        "model_testing": "Đang kiểm tra model `{model}` trên **{provider_name}**...",
+        "model_switched": (
+            "Đã chuyển model (`{latency_ms}ms`)\n"
+            "- Provider: **{provider_name}** (`{endpoint_host}`)\n"
+            "- Model mới: `{model}`"
+        ),
+        "model_failed_keep_old": (
+            "Không thể chuyển sang `{new_model}`. Vẫn giữ model cũ `{old_model}`.\n"
+            "- Lý do: {error}"
+        ),
+        "lang_updated": "Ngôn ngữ mặc định của server đã đổi sang **{language_label}**",
+        "lang_current": "Ngôn ngữ hiện tại: **{language_label}**",
+        "status_title": "Trạng thái TL;DR",
+        "status_configured_yes": "Đã cấu hình | Write-Only",
+        "status_configured_no": "Chưa cấu hình (dùng `/config`)",
+        "status_field_state": "Trạng thái",
+        "status_field_provider": "Provider & Endpoint",
+        "status_field_model": "Model",
+        "status_field_lang": "Ngôn ngữ mặc định",
+        "status_field_limits": "Giới hạn ngữ cảnh",
+        "status_limits_val": (
+            "`{max_msgs}` tin/lần | `{max_days}` ngày | `{max_tokens:,}` input tokens | `{storage_mode}`"
+        ),
+        "status_footer": "Write-Only | API Key không bao giờ được hiển thị lại",
+        "help_title": "Hướng dẫn TL;DR",
+        "help_desc": (
+            "Tóm tắt 5 đến 1.500 tin nhắn bị bỏ lỡ theo chủ đề, ghi rõ ai đã nói gì, "
+            "quyết định đã chốt và lời nhắc dành riêng cho bạn."
+        ),
+        "help_setup_header": "Thiết lập cho quản trị viên (chỉ 1 lần)",
+        "help_setup_body": (
+            "1. Vào **Server Settings > Roles**, kéo Role của Bot xuống dưới Role Admin/Mod\n"
+            "2. Gõ `/config`, chọn Provider (Gemini, DeepSeek, OpenAI, Claude, Custom...) và dán API Key trong hộp thoại riêng tư\n"
+            "3. Tùy chọn: dùng `/model` để chọn nhanh trong danh sách model của key, `/language` để đổi ngôn ngữ mặc định"
+        ),
+        "help_usage_header": "Cách dùng cho mọi thành viên",
+        "help_usage_body": (
+            "- `/tldr count:500`: tóm tắt 500 tin nhắn gần nhất\n"
+            "- `/tldr since:6h`: tóm tắt theo mốc thời gian (`30m`, `2h`, `24h`, `3d`, `today`)\n"
+            "- Chuột phải tin nhắn > **Apps > TL;DR from here**: tóm tắt từ đúng vạch tin chưa đọc\n"
+            "- Kết quả mặc định chỉ mình bạn thấy; dùng nút **Chia sẻ** để đăng công khai nếu cần"
+        ),
+        "help_footer": "Write-Only | Không lưu nội dung tin nhắn chat lên ổ đĩa",
+        "unexpected_command_error": "Đã xảy ra lỗi ngoài dự kiến khi xử lý lệnh. Vui lòng thử lại sau.",
+        "progress_fetching": "Đang tải lịch sử `#{channel}` | {fetched} tin",
+        "progress_analyzing": (
+            "`{fetched} -> {lines}` dòng (~{tokens:,} tok) | Đang tóm tắt bằng `{model}`..."
+        ),
+        "progress_map_reduce": (
+            "Hội thoại dài ({fetched} tin, ~{tokens:,} tok) | Đang xử lý song song {chunks} phân đoạn bằng `{model}`..."
+        ),
+        "no_messages_found": "Không có đủ nội dung trò chuyện hợp lệ trong khoảng đã chọn",
+        "summary_title": "TL;DR | #{channel}",
+        "summary_participants": "Tham gia ({count}): {list}",
+        "summary_topics_header": "Các chủ đề chính",
+        "summary_decisions_header": "Đã chốt & Việc cần làm",
+        "summary_open_header": "Còn bỏ ngỏ",
+        "summary_highlights_header": "Link & Tài liệu",
+        "summary_mentions_header": "Nhắc đến bạn",
+        "summary_by_person_header": "Theo từng người tham gia",
+        "summary_jump_link": "xem",
+        "summary_jump_full": "tới tin nhắn",
+        "summary_capped_note": (
+            "Ghi chú: giới hạn trong {used:,}/{fetched:,} tin gần nhất để giữ độ chính xác."
+        ),
+        "summary_cache_badge": " | cache",
+        "summary_footer": (
+            "Chỉ mình bạn thấy | {fetched} -> {lines} | {tokens:,} tok | {elapsed:.1f}s | {model}{cache_badge}"
+        ),
+        "summary_public_footer": (
+            "Chia sẻ bởi {requester} | {fetched} tin | {time_range} | {model}"
+        ),
+        "topic_status_decided": "Đã chốt",
+        "topic_status_open": "Chưa chốt",
+        "topic_status_resolved": "Đã xử lý",
+        "topic_status_info": "",
+        "btn_share": "Chia sẻ",
+        "btn_by_person": "Theo từng người",
+        "btn_detailed": "Chi tiết hơn",
+        "btn_refresh": "Tạo lại",
+        "btn_prev": "Trước",
+        "btn_next": "Sau",
+        "btn_shared_ok": "Đã chia sẻ bản tóm tắt ra kênh (đã tắt mọi ping)",
+        "btn_working": "Đang cập nhật bản tóm tắt...",
+        "btn_expired": "Phiên tóm tắt đã hết hạn. Vui lòng chạy lại `/tldr`.",
+        "err_ssrf_scheme": "Endpoint phải bắt đầu bằng `https://`",
+        "err_ssrf_private": "Endpoint bị chặn vì trỏ vào địa chỉ mạng nội bộ hoặc localhost",
+        "err_ssrf_invalid": "Định dạng Endpoint URL không hợp lệ",
+        "err_ssrf_dns": "Không thể phân giải tên miền của Endpoint URL",
+        "err_auth": "API Key không hợp lệ hoặc đã bị thu hồi (HTTP 401). Người có Role cao hơn Bot hãy cập nhật qua `/config`.",
+        "err_forbidden": "API Key không có quyền gọi model này hoặc bị hạn chế khu vực (HTTP 403)",
+        "err_quota": "API Key hết số dư hoặc vượt giới hạn tốc độ (HTTP 402/429). Thử lại sau hoặc đổi key qua `/config`.",
+        "err_not_found": "Không tìm thấy model `{model}` hoặc sai Endpoint (HTTP 404): {detail}",
+        "err_bad_request": "Endpoint từ chối yêu cầu (HTTP 400): {detail}",
+        "err_server": "Máy chủ API đang gặp sự cố tạm thời (HTTP 5xx). Vui lòng thử lại sau.",
+        "err_timeout": "Quá thời gian chờ phản hồi từ Endpoint. Thử lại hoặc giảm số lượng tin nhắn.",
+        "err_connection": "Không thể kết nối tới Endpoint URL",
+        "err_unknown": "Lỗi gọi API: {detail}",
+        "summary_failed": "Không thể tạo bản tóm tắt.\n{error}",
+    },
 }
 
 
-def get_language_spec(code: str | None, fallback: str = "vi") -> LanguageSpec:
+def get_language_spec(code: str | None, fallback: str = "en") -> LanguageSpec:
     normalized = (code or "").strip().lower()
     if normalized in LANGUAGE_SPECS:
         return LANGUAGE_SPECS[normalized]
-    return LANGUAGE_SPECS.get(fallback, LANGUAGE_SPECS["vi"])
+    return LANGUAGE_SPECS.get(fallback, LANGUAGE_SPECS["en"])
 
 
 def t(lang_code: str, key: str, **kwargs: Any) -> str:
@@ -437,12 +424,12 @@ def t(lang_code: str, key: str, **kwargs: Any) -> str:
 
 
 class GuildPreferencesStore:
-    """Thread-safe SQLite WAL store for non-secret per-guild preferences (e.g., default language)."""
+    """Thread-safe SQLite WAL store for non-secret per-guild preferences (e.g. default language)."""
 
     def __init__(
         self,
         db_file: Path,
-        default_language: str = "vi",
+        default_language: str = "en",
         *,
         persist: bool = True,
     ) -> None:

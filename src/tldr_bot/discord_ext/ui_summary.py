@@ -33,7 +33,7 @@ def _render_jump_links(
             continue
         label = link_label if len(ref_ids) == 1 else f"{link_label} {idx + 1}"
         links.append(f"[{label}]({url})")
-    return f" ({' · '.join(links)})" if links else ""
+    return f" ({', '.join(links)})" if links else ""
 
 
 def _status_tag(status: str, lang_code: str) -> str:
@@ -89,7 +89,7 @@ def _build_header_description(
     if conv.time_range_label:
         meta_bits.append(f"`{conv.time_range_label}`")
     if meta_bits:
-        parts.append(" · ".join(meta_bits))
+        parts.append(" | ".join(meta_bits))
 
     participants_line = _format_participants_line(conv, lang_code)
     if participants_line:
@@ -134,12 +134,12 @@ def _collect_sections(
             sections.append((name, chunk))
 
     topic_lines = [
-        f"• **{topic.title}**{_status_tag(topic.status, lang_code)} — "
+        f"- **{topic.title}**{_status_tag(topic.status, lang_code)}: "
         f"{topic.summary}{_render_jump_links(topic.ref_ids, conv.ref_to_jump_url, jump_label)}"
         for topic in result.topics
     ]
     person_lines = [
-        f"• **{person.speaker}** — {person.summary}"
+        f"- **{person.speaker}:** {person.summary}"
         f"{_render_jump_links(person.ref_ids, conv.ref_to_jump_url, jump_label)}"
         for person in result.by_person
     ]
@@ -152,20 +152,20 @@ def _collect_sections(
         if not topic_lines and person_lines:
             _add_section(t(lang_code, "summary_by_person_header"), person_lines)
 
-    decision_lines = [f"• {d}" for d in result.decisions]
+    decision_lines = [f"- {d}" for d in result.decisions]
     for act in result.action_items:
         jump = (
             _render_jump_links((act.ref_id,), conv.ref_to_jump_url, jump_label)
             if act.ref_id
             else ""
         )
-        owner = f"**{act.owner}** → " if act.owner else ""
-        decision_lines.append(f"• {owner}{act.task}{jump}")
+        owner = f"**{act.owner}:** " if act.owner else ""
+        decision_lines.append(f"- {owner}{act.task}{jump}")
     _add_section(t(lang_code, "summary_decisions_header"), decision_lines)
 
     _add_section(
         t(lang_code, "summary_open_header"),
-        [f"• {q}" for q in result.open_questions],
+        [f"- {q}" for q in result.open_questions],
     )
 
     hl_lines: list[str] = []
@@ -175,14 +175,14 @@ def _collect_sections(
             if hl.ref_id
             else ""
         )
-        by_part = f" — **{hl.shared_by}**" if hl.shared_by else ""
-        hl_lines.append(f"• {hl.label}{by_part}{jump}")
+        by_part = f" (**{hl.shared_by}**)" if hl.shared_by else ""
+        hl_lines.append(f"- {hl.label}{by_part}{jump}")
     _add_section(t(lang_code, "summary_highlights_header"), hl_lines)
 
     # Personal Radar: shown strictly in private view, never broadcast on public share
     if not public_share and conv.requester_mentions:
         mention_lines = [
-            f"• **{hit.author_name}** `{hit.timestamp_hhmm}` — \"{hit.snippet}\""
+            f"- **{hit.author_name}** `{hit.timestamp_hhmm}`: \"{hit.snippet}\""
             + (f" ([{jump_full}]({hit.jump_url}))" if hit.jump_url else "")
             for hit in conv.requester_mentions[:5]
         ]
@@ -265,7 +265,7 @@ def build_summary_embeds(
 
     total_pages = len(pages)
     for idx, emb in enumerate(pages):
-        page_suffix = f" · {idx + 1}/{total_pages}" if total_pages > 1 else ""
+        page_suffix = f" | {idx + 1}/{total_pages}" if total_pages > 1 else ""
         emb.set_footer(text=f"{footer_text}{page_suffix}"[:2048])
 
     return pages

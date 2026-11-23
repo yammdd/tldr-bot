@@ -27,7 +27,7 @@ def parse_since_duration(raw: str, *, max_days: int = 7) -> timedelta | None:
     if not cleaned:
         return None
 
-    if cleaned in {"today", "homnay", "hôm nay"}:
+    if cleaned == "today":
         now = datetime.now(timezone.utc)
         delta = now - now.replace(hour=0, minute=0, second=0, microsecond=0)
         return max(delta, timedelta(minutes=30))

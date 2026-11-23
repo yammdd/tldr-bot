@@ -1,4 +1,4 @@
-"""Core /tldr slash command and 'TL;DR từ tin nhắn này' message context menu."""
+"""Core /tldr slash command and 'TL;DR from here' message context menu."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ from tldr_bot.security.vault import GuildLLMConfig
 logger = logging.getLogger(__name__)
 
 STYLE_CHOICES: list[app_commands.Choice[str]] = [
-    app_commands.Choice(name=spec.label_vi, value=spec.id)
+    app_commands.Choice(name=spec.label, value=spec.id)
     for spec in SUMMARY_STYLES.values()
 ]
 
@@ -40,7 +40,7 @@ class TldrCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._ctx_menu = app_commands.ContextMenu(
-            name="TL;DR từ tin nhắn này",
+            name="TL;DR from here",
             callback=self._context_menu_tldr,
         )
 
@@ -117,7 +117,7 @@ class TldrCog(commands.Cog):
         guild = interaction.guild
         channel = interaction.channel
         if guild is None or channel is None or not hasattr(channel, "history"):
-            await interaction.response.send_message(t("vi", "guild_only"), ephemeral=True)
+            await interaction.response.send_message(t("en", "guild_only"), ephemeral=True)
             return None
 
         lang = override_language or self.bot.prefs.get_language(guild.id)
@@ -371,15 +371,15 @@ class TldrCog(commands.Cog):
 
     @app_commands.command(
         name="tldr",
-        description="Tóm tắt hội thoại trước đó theo chuẩn Meta AI — rõ ai nói gì, nói về gì",
+        description="Summarize recent channel messages with clear speaker attribution and decisions",
     )
     @app_commands.guild_only()
     @app_commands.describe(
-        count="Số tin nhắn gần nhất cần tóm tắt (vd: 100, 300, 500 — mặc định 100)",
-        since="Hoặc tóm tắt theo thời gian (vd: 30m, 2h, 12h, 24h, 3d, today)",
-        style="Phong cách tóm tắt (mặc định: Chuẩn Meta AI)",
-        focus="Tùy chọn: chủ đề hoặc câu hỏi cụ thể cần lọc (vd: 'lịch ăn tối', 'deadline')",
-        language="Tùy chọn: ngôn ngữ riêng cho bản tóm tắt này",
+        count="Number of recent messages to summarize (e.g. 100, 300, 500; default 100)",
+        since="Or summarize by time window (e.g. 30m, 2h, 12h, 24h, 3d, today)",
+        style="Summary format (default: Standard)",
+        focus="Optional: specific topic or question to focus on (e.g. 'dinner plans', 'deadlines')",
+        language="Optional: override output language for this summary only",
     )
     @app_commands.choices(style=STYLE_CHOICES, language=LANGUAGE_CHOICES)
     async def tldr_command(
@@ -433,7 +433,7 @@ class TldrCog(commands.Cog):
             count=target_count,
             since_delta=since_delta,
             scope_tag=scope_tag,
-            style_id=style.value if style else "meta",
+            style_id=style.value if style else "standard",
             focus_query=focus,
             override_language=language.value if language else None,
         )
@@ -447,7 +447,7 @@ class TldrCog(commands.Cog):
             interaction,
             after_message=message,
             scope_tag=f"after:{message.id}",
-            style_id="meta",
+            style_id="standard",
             focus_query=None,
             override_language=None,
         )

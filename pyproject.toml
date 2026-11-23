@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tldr-bot"
 version = "1.0.0"
-description = "Secure, fast, Meta-AI-style Discord TL;DR summarization bot supporting OpenAI-compatible LLM endpoints."
+description = "Secure, fast, multi-server Discord TL;DR summarization bot supporting OpenAI-compatible LLM endpoints."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

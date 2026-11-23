@@ -181,7 +181,7 @@ def run() -> None:
 
     if not settings.discord_token or settings.discord_token == "your_discord_bot_token_here":
         logger.error(
-            "DISCORD_TOKEN chưa được cấu hình. Sao chép .env.example thành .env và điền DISCORD_TOKEN."
+            "DISCORD_TOKEN is not configured. Copy .env.example to .env and set DISCORD_TOKEN."
         )
         raise SystemExit(1)
 
