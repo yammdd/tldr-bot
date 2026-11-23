@@ -1,4 +1,4 @@
-# Privacy Policy — TL;DR Bot
+# Privacy Policy - TL;DR Bot
 
 *Last updated: November 2026*
 

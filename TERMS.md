@@ -1,4 +1,4 @@
-# Terms of Service — TL;DR Bot
+# Terms of Service - TL;DR Bot
 
 *Last updated: November 2026*
 
