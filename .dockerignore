@@ -1,0 +1,17 @@
+.git/
+.venv/
+venv/
+.pytest_cache/
+.pytest_tmp/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+data/
+tests/
+assets/
+*.enc
+*.key
+*.db
+*.db-wal
+*.db-shm
