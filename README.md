@@ -120,6 +120,15 @@ curl http://127.0.0.1:8080/healthz
 
 ---
 
+## Contributing & Standards
+
+Before opening a pull request, read:
+- [CONTRIBUTING.md](CONTRIBUTING.md): branching, Conventional Commits, PR workflow, and repository map
+- [CODING_STANDARDS.md](CODING_STANDARDS.md): clean code, async Discord rules, UI discipline, and security invariants
+- [SECURITY.md](SECURITY.md): security model and vulnerability reporting
+
+---
+
 ## Legal & Privacy
 
 See [PRIVACY.md](PRIVACY.md) and [TERMS.md](TERMS.md).
