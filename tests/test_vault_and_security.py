@@ -228,6 +228,19 @@ def test_guild_language_preferences_sqlite_and_copy_hygiene(tmp_path: Path) -> N
     assert "meta ai" not in readme.lower()
 
 
+def test_settings_falls_back_to_railway_port_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    from tldr_bot.settings import Settings
+
+    monkeypatch.delenv("HEALTH_PORT", raising=False)
+    monkeypatch.setenv("PORT", "9090")
+    loaded = Settings.from_env()
+    assert loaded.health_port == 9090
+
+    monkeypatch.setenv("HEALTH_PORT", "8080")
+    loaded2 = Settings.from_env()
+    assert loaded2.health_port == 8080
+
+
 @pytest.mark.asyncio
 async def test_concurrency_guard_enforces_guild_and_global_limits() -> None:
     guard = ConcurrencyGuard(max_per_guild=1, max_global=2)

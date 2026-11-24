@@ -152,7 +152,10 @@ class Settings:
                 os.getenv("SMOKE_TEST_TIMEOUT_SECONDS"), 15, min_val=5, max_val=45
             ),
             health_port=_parse_int(
-                os.getenv("HEALTH_PORT"), 0, min_val=0, max_val=65535
+                os.getenv("HEALTH_PORT") or os.getenv("PORT"),
+                0,
+                min_val=0,
+                max_val=65535,
             ),
             allow_local_endpoints=_parse_bool(
                 os.getenv("ALLOW_LOCAL_ENDPOINTS"), default=False

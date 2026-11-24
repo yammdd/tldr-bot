@@ -62,6 +62,21 @@ Start the bot:
 
 ---
 
+## Deploy on Railway (Recommended)
+
+This repository includes `railway.toml` and an automatic volume-permission entrypoint in `Dockerfile`.
+
+1. Sign in at [Railway](https://railway.com) and select **New Project > Deploy from GitHub Repo** (`yammdd/tldr-bot`).
+2. Attach a persistent volume: open the service **Volumes > Add Volume** and set **Mount Path** to `/app/data`.
+3. Open **Variables** and add:
+   - `DISCORD_TOKEN`: your bot token from the Discord Developer Portal
+   - `VAULT_MASTER_KEY`: a 32+ character random secret (keep this fixed across redeploys)
+   - `DB_FILE_PATH`: `/app/data/tldr_bot.db`
+   - `HEALTH_PORT`: `8080`
+4. Railway builds the Docker image automatically, verifies `/healthz`, and redeploys on every push to `main`.
+
+---
+
 ## Multi-Server Docker Deployment
 
 ```bash
