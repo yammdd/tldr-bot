@@ -175,12 +175,13 @@ class AdminCog(commands.Cog):
         spec = self.bot.prefs.set_language(interaction.guild.id, language.value)
         await interaction.response.send_message(
             t(spec.code, "lang_updated", language_label=spec.native_label),
-            ephemeral=True,
+            ephemeral=False,
+            allowed_mentions=discord.AllowedMentions.none(),
         )
 
     @app_commands.command(
         name="status",
-        description="View active bot configuration and limits (never displays the API key)",
+        description="View active bot configuration and limits (never displays the API key or endpoint)",
     )
     @app_commands.guild_only()
     async def status_command(self, interaction: discord.Interaction) -> None:
@@ -209,7 +210,7 @@ class AdminCog(commands.Cog):
         if status.configured:
             embed.add_field(
                 name=t(lang, "status_field_provider"),
-                value=f"**{status.provider_name}** | `{status.endpoint_host}`",
+                value=f"**{status.provider_name}**",
                 inline=True,
             )
             embed.add_field(
@@ -235,7 +236,11 @@ class AdminCog(commands.Cog):
             inline=False,
         )
         embed.set_footer(text=t(lang, "status_footer"))
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(
+            embed=embed,
+            ephemeral=False,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     @app_commands.command(
         name="reset_config",
@@ -276,4 +281,8 @@ class AdminCog(commands.Cog):
             inline=False,
         )
         embed.set_footer(text=t(lang, "help_footer"))
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(
+            embed=embed,
+            ephemeral=False,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )

@@ -1,4 +1,4 @@
-"""Unslopped editorial Discord Embed renderer, Jump Link builder, pagination, and action controls."""
+"""Unslopped editorial Discord Embed renderer, safe Jump Link builder, pagination, and controls."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from tldr_bot.discord_ext.preprocessor import PreprocessedConversation
 from tldr_bot.i18n import t
 from tldr_bot.llm.summarizer import SummaryResult
 
-# Editorial palette: quiet dark slate neutral + one muted terracotta accent when mentions need attention
+# Editorial palette: quiet dark slate neutral + one muted terracotta accent when mentions exist
 COLOR_INK_SLATE = discord.Color.from_rgb(43, 48, 56)       # #2B3038
 COLOR_TERRACOTTA = discord.Color.from_rgb(200, 109, 68)    # #C86D44
 COLOR_SAGE = discord.Color.from_rgb(61, 122, 90)           # #3D7A5A
@@ -25,18 +25,36 @@ def _render_jump_links(
     ref_ids: tuple[int, ...],
     ref_to_url: dict[int, str],
     link_label: str,
+    *,
+    max_links: int = 2,
 ) -> str:
-    links: list[str] = []
-    for idx, rid in enumerate(ref_ids):
-        url = ref_to_url.get(rid)
-        if not url:
-            continue
-        label = link_label if len(ref_ids) == 1 else f"{link_label} {idx + 1}"
-        links.append(f"[{label}]({url})")
-    return f" ({', '.join(links)})" if links else ""
+    valid_urls = [ref_to_url[rid] for rid in ref_ids if rid in ref_to_url and ref_to_url[rid]][
+        :max_links
+    ]
+    if not valid_urls:
+        return ""
+    if len(valid_urls) == 1:
+        return f" ([{link_label}]({valid_urls[0]}))"
+    links = [f"[{link_label} {idx + 1}]({url})" for idx, url in enumerate(valid_urls)]
+    return f" ({', '.join(links)})"
+
+
+def _format_line_with_suffix(prefix: str, body: str, suffix: str, *, max_len: int = _FIELD_LIMIT) -> str:
+    """Safely truncate body text BEFORE appending markdown jump links so URLs never break."""
+    available = max_len - len(prefix) - len(suffix)
+    if available < 40:
+        # Drop suffix only in extreme edge case where prefix+suffix alone fills field
+        trim_body = body[: max(20, max_len - len(prefix) - 3)].rstrip()
+        return f"{prefix}{trim_body}..." if len(prefix) + len(body) > max_len else f"{prefix}{body}"
+    if len(body) <= available:
+        return f"{prefix}{body}{suffix}"
+    clipped = body[: available - 3].rstrip()
+    return f"{prefix}{clipped}...{suffix}"
 
 
 def _status_tag(status: str, lang_code: str) -> str:
+    if not status or status == "info":
+        return ""
     label = t(lang_code, f"topic_status_{status}")
     return f" `[{label}]`" if label else ""
 
@@ -85,11 +103,8 @@ def _build_header_description(
     hit_fetch_cap: bool,
 ) -> str:
     parts: list[str] = []
-    meta_bits: list[str] = []
     if conv.time_range_label:
-        meta_bits.append(f"`{conv.time_range_label}`")
-    if meta_bits:
-        parts.append(" | ".join(meta_bits))
+        parts.append(f"`{conv.time_range_label}`")
 
     participants_line = _format_participants_line(conv, lang_code)
     if participants_line:
@@ -121,6 +136,7 @@ def _collect_sections(
     lang_code: str,
     style_id: str,
     public_share: bool,
+    requester_display: str,
 ) -> list[tuple[str, str]]:
     jump_label = t(lang_code, "summary_jump_link")
     jump_full = t(lang_code, "summary_jump_full")
@@ -134,13 +150,19 @@ def _collect_sections(
             sections.append((name, chunk))
 
     topic_lines = [
-        f"- **{topic.title}**{_status_tag(topic.status, lang_code)}: "
-        f"{topic.summary}{_render_jump_links(topic.ref_ids, conv.ref_to_jump_url, jump_label)}"
+        _format_line_with_suffix(
+            f"- **{topic.title}**{_status_tag(topic.status, lang_code)}: ",
+            topic.summary,
+            _render_jump_links(topic.ref_ids, conv.ref_to_jump_url, jump_label, max_links=2),
+        )
         for topic in result.topics
     ]
     person_lines = [
-        f"- **{person.speaker}:** {person.summary}"
-        f"{_render_jump_links(person.ref_ids, conv.ref_to_jump_url, jump_label)}"
+        _format_line_with_suffix(
+            f"- **{person.speaker}:** ",
+            person.summary,
+            _render_jump_links(person.ref_ids, conv.ref_to_jump_url, jump_label, max_links=1),
+        )
         for person in result.by_person
     ]
 
@@ -155,12 +177,12 @@ def _collect_sections(
     decision_lines = [f"- {d}" for d in result.decisions]
     for act in result.action_items:
         jump = (
-            _render_jump_links((act.ref_id,), conv.ref_to_jump_url, jump_label)
+            _render_jump_links((act.ref_id,), conv.ref_to_jump_url, jump_label, max_links=1)
             if act.ref_id
             else ""
         )
         owner = f"**{act.owner}:** " if act.owner else ""
-        decision_lines.append(f"- {owner}{act.task}{jump}")
+        decision_lines.append(_format_line_with_suffix(f"- {owner}", act.task, jump))
     _add_section(t(lang_code, "summary_decisions_header"), decision_lines)
 
     _add_section(
@@ -171,19 +193,23 @@ def _collect_sections(
     hl_lines: list[str] = []
     for hl in result.highlights:
         jump = (
-            _render_jump_links((hl.ref_id,), conv.ref_to_jump_url, jump_label)
+            _render_jump_links((hl.ref_id,), conv.ref_to_jump_url, jump_label, max_links=1)
             if hl.ref_id
             else ""
         )
         by_part = f" (**{hl.shared_by}**)" if hl.shared_by else ""
-        hl_lines.append(f"- {hl.label}{by_part}{jump}")
+        hl_lines.append(_format_line_with_suffix("- ", f"{hl.label}{by_part}", jump))
     _add_section(t(lang_code, "summary_highlights_header"), hl_lines)
 
-    # Personal Radar: shown strictly in private view, never broadcast on public share
+    # Personal mentions: private view says "Mentions of you"; public view stays clean by omitting
+    # personal pings when broadcast publicly, or labeling with requester name only on private views.
     if not public_share and conv.requester_mentions:
         mention_lines = [
-            f"- **{hit.author_name}** `{hit.timestamp_hhmm}`: \"{hit.snippet}\""
-            + (f" ([{jump_full}]({hit.jump_url}))" if hit.jump_url else "")
+            _format_line_with_suffix(
+                f"- **{hit.author_name}** `{hit.timestamp_hhmm}`: \"",
+                hit.snippet,
+                f"\" ([{jump_full}]({hit.jump_url}))" if hit.jump_url else "\"",
+            )
             for hit in conv.requester_mentions[:5]
         ]
         _add_section(t(lang_code, "summary_mentions_header"), mention_lines)
@@ -200,7 +226,7 @@ def build_summary_embeds(
     style_id: str,
     hit_fetch_cap: bool = False,
     from_cache: bool = False,
-    public_share: bool = False,
+    public_share: bool = True,
     requester_display: str = "",
 ) -> list[discord.Embed]:
     """Render a SummaryResult into 1 or more clean editorial Discord Embed pages."""
@@ -217,28 +243,32 @@ def build_summary_embeds(
         lang_code=lang_code,
         style_id=style_id,
         public_share=public_share,
+        requester_display=requester_display,
     )
 
-    # Semantic accent restraint: use muted terracotta ONLY when the user was directly mentioned
     has_personal_mentions = not public_share and bool(conv.requester_mentions)
     accent = COLOR_TERRACOTTA if has_personal_mentions else COLOR_INK_SLATE
 
     cache_badge = t(lang_code, "summary_cache_badge") if from_cache else ""
+    non_break_lines = len([turn for turn in conv.turns if not turn.is_session_break])
     if public_share:
         footer_text = t(
             lang_code,
             "summary_public_footer",
             requester=requester_display or "Member",
             fetched=conv.raw_message_count,
-            time_range=conv.time_range_label,
+            lines=non_break_lines,
+            tokens=result.input_tokens_estimated,
+            elapsed=result.elapsed_seconds,
             model=result.model_used,
+            cache_badge=cache_badge,
         )
     else:
         footer_text = t(
             lang_code,
             "summary_footer",
             fetched=conv.raw_message_count,
-            lines=len([turn for turn in conv.turns if not turn.is_session_break]),
+            lines=non_break_lines,
             tokens=result.input_tokens_estimated,
             elapsed=result.elapsed_seconds,
             model=result.model_used,
@@ -288,6 +318,7 @@ class SummarySessionContext:
     latest_message_id: int
     hit_fetch_cap: bool
     from_cache: bool
+    is_private: bool = False
 
 
 ReRunCallback = Callable[
@@ -296,7 +327,7 @@ ReRunCallback = Callable[
 
 
 class SummaryActionView(discord.ui.View):
-    """Quiet interactive controls under an ephemeral TL;DR summary."""
+    """Quiet interactive controls under a TL;DR summary."""
 
     def __init__(
         self,
@@ -312,7 +343,7 @@ class SummaryActionView(discord.ui.View):
         self._page_idx = 0
         self._rerun = rerun_callback
         self._format_error = format_error_fn
-        self._shared = False
+        self._shared = not ctx.is_private
         self._rebuild_buttons()
 
     def _rebuild_buttons(self) -> None:
@@ -337,14 +368,16 @@ class SummaryActionView(discord.ui.View):
             self.add_item(prev_btn)
             self.add_item(next_btn)
 
-        share_btn = discord.ui.Button(
-            label=t(lang, "btn_share"),
-            style=discord.ButtonStyle.primary,
-            disabled=self._shared,
-            row=1,
-        )
-        share_btn.callback = self._on_share
-        self.add_item(share_btn)
+        # Only offer Share button when the summary was requested privately
+        if self._ctx.is_private:
+            share_btn = discord.ui.Button(
+                label=t(lang, "btn_share"),
+                style=discord.ButtonStyle.primary,
+                disabled=self._shared,
+                row=1,
+            )
+            share_btn.callback = self._on_share
+            self.add_item(share_btn)
 
         if self._ctx.style_id != "by_person":
             person_btn = discord.ui.Button(
@@ -447,7 +480,7 @@ class SummaryActionView(discord.ui.View):
         self._ctx.result = new_result
         self._ctx.style_id = new_style
         self._ctx.from_cache = from_cache
-        self._shared = False
+        self._shared = not self._ctx.is_private
         self._pages = build_summary_embeds(
             result=new_result,
             conv=self._ctx.conv,
@@ -456,7 +489,7 @@ class SummaryActionView(discord.ui.View):
             style_id=new_style,
             hit_fetch_cap=self._ctx.hit_fetch_cap,
             from_cache=from_cache,
-            public_share=False,
+            public_share=not self._ctx.is_private,
             requester_display=self._ctx.requester_display,
         )
         self._page_idx = 0
@@ -465,6 +498,7 @@ class SummaryActionView(discord.ui.View):
             content=None,
             embed=self._pages[0],
             view=self,
+            allowed_mentions=discord.AllowedMentions.none(),
         )
 
     async def _on_by_person(self, interaction: discord.Interaction) -> None:

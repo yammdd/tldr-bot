@@ -206,6 +206,9 @@ def test_guild_language_preferences_sqlite_and_copy_hygiene(tmp_path: Path) -> N
 
     assert "Permission denied" in t("en", "perm_role_too_low", bot_role="Bot")
     assert t("vi", "perm_role_too_low", bot_role="Bot") != t("en", "perm_role_too_low", bot_role="Bot")
+    # Empty string catalog entries must stay empty and never fall back to the key name
+    assert t("en", "topic_status_info") == ""
+    assert t("vi", "topic_status_info") == ""
 
     # Copy hygiene guards: zero exclamation marks, em-dashes, en-dashes, or third-party AI brand copy
     for locale, strings in UI_STRINGS.items():

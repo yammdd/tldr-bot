@@ -412,6 +412,66 @@ def test_embed_builder_hides_personal_mentions_on_public_share() -> None:
     assert public_embeds[0].color.to_rgb() == (43, 48, 56)
 
 
+def test_embed_builder_never_leaks_info_status_key_or_breaks_jump_links() -> None:
+    u1 = "https://discord.com/channels/1129787574764982414/1162043510921375885/1441049001309900881"
+    u2 = "https://discord.com/channels/1129787574764982414/1162043510921375885/1441065389671845938"
+    u3 = "https://discord.com/channels/1129787574764982414/1162043510921375885/1441068225772261446"
+    conv = PreprocessedConversation(
+        turns=(TranscriptTurn(ref_id=1, text_line="[#1 14:00] Alex: Hi", raw_msg_count=1),),
+        ref_to_jump_url={1: u1, 2: u2, 3: u3},
+        valid_ref_ids={1, 2, 3},
+        participants=(ParticipantStat(user_id=10, display_name="Alex", message_count=5),),
+        participants_summary="Alex (5 msgs)",
+        requester_mentions=(),
+        raw_message_count=5,
+        kept_message_count=5,
+        time_range_label="14:00 - 14:10 UTC",
+    )
+    long_body = "Very detailed discussion point about course registration. " * 22
+    summary = parse_and_validate_summary(
+        json.dumps(
+            {
+                "overview": "Long topic test.",
+                "topics": [
+                    {
+                        "title": "Course planning",
+                        "speakers": ["Alex"],
+                        "summary": long_body,
+                        "status": "info",
+                        "ref_ids": [1, 2, 3],
+                    }
+                ],
+            }
+        ),
+        valid_ref_ids={1, 2, 3},
+        strategy="single_pass",
+        chunks_used=1,
+        input_tokens_estimated=120,
+        api_prompt_tokens=100,
+        api_completion_tokens=40,
+        elapsed_seconds=1.1,
+        was_token_capped=False,
+        kept_raw_messages=5,
+        total_raw_messages=5,
+        model_used="claude-haiku-5-5",
+    )
+
+    embeds = build_summary_embeds(
+        result=summary,
+        conv=conv,
+        channel_name="level",
+        lang_code="vi",
+        style_id="standard",
+        public_share=True,
+        requester_display="Yamm",
+    )
+    topic_val = embeds[0].fields[0].value
+    assert "topic_status_info" not in topic_val
+    assert len(topic_val) <= 1024
+    # Both jump links preserved intact with closing parentheses
+    assert f"([xem 1]({u1}), [xem 2]({u2}))" in topic_val
+
+
 @pytest.mark.asyncio
 async def test_bot_registers_all_slash_commands_and_context_menu(tmp_path) -> None:
     settings = Settings(

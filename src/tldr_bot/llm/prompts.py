@@ -158,9 +158,11 @@ CRITICAL RULES:
    - Cite 1 to 3 real integer message IDs (`ref_ids`) from the `[#id]` prefixes in the transcript for every topic and action item. Never invent IDs.
 4. **High Information Density & Clean Prose:**
    - Eliminate meta-filler phrases (NEVER write "In this conversation, members discussed...").
+   - Merge closely related sub-discussions into ONE cohesive topic rather than repeating the same subject across two topics.
+   - Do NOT create a dedicated topic just for spam, greetings, or unrelated filler unless the entire chat has no substantive topic.
+   - Keep each topic `summary` crisp (1 to 3 concise sentences, under 420 characters) and cite 1 to 2 key `ref_ids` per topic.
    - Do not use decorative emojis, exclamation marks, or em-dashes.
    - Pack concrete entities directly: speaker names, times, dates, venues, error codes, prices, decisions, and links.
-   - Merge minor chit-chat or skip pure noise unless it is the whole chat.
 5. **Output Language:** Write ALL natural-language text fields strictly in **{lang.llm_instruction}**. Keep JSON keys and `status` enum values in English.
 6. **Requested Style (`{style.id}`):** {style.guidance}
 {by_person_rule}{focus_instruction}

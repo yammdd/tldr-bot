@@ -104,10 +104,10 @@ curl http://127.0.0.1:8080/healthz
 | `/config` | Owner or Role > Bot | Pick a provider or custom endpoint, enter API Key privately, and run a live smoke test |
 | `/model [model_id]` | Owner or Role > Bot | Fetch chat models from the active endpoint and switch models without re-entering the API key |
 | `/language` | Owner or Role > Bot | Set the server default language (`en`, `vi`, `ja`, `ko`, `zh`, `auto`) |
-| `/status` | Everyone | View active provider, model, default language, and context limits (never displays the API key) |
+| `/status` | Everyone | View active provider, model, default language, and context limits (never displays API key or endpoint URL) |
 | `/reset_config` | Owner or Role > Bot | Delete the server's stored API key and LLM configuration |
 | `/help` | Everyone | Quick setup and usage guide |
-| `/tldr [count] [since] [style] [focus] [language]` | Everyone | Summarize recent messages by count (e.g. `500`), timeframe (`2h`, `24h`, `today`), style, and optional focus |
+| `/tldr [count] [since] [style] [focus] [language] [private]` | Everyone | Summarize recent messages publicly by default (or set `private:True`) |
 | Right-click message > **Apps > TL;DR from here** | Everyone | Summarize everything from the selected message up to the present |
 
 ---

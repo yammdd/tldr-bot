@@ -276,6 +276,7 @@ class TldrCog(commands.Cog):
         style_id: str,
         focus_query: str | None,
         override_language: str | None,
+        private: bool = False,
     ) -> None:
         validated = await self._validate_access(
             interaction, override_language=override_language
@@ -288,7 +289,7 @@ class TldrCog(commands.Cog):
             async with self.bot.concurrency.acquire(guild.id):
                 self.bot.cooldowns.touch(guild.id, interaction.user.id)
                 channel_name = getattr(channel, "name", "channel")
-                await interaction.response.defer(ephemeral=True, thinking=True)
+                await interaction.response.defer(ephemeral=private, thinking=True)
 
                 fetch_res = await self._fetch_history(
                     interaction,
@@ -337,7 +338,7 @@ class TldrCog(commands.Cog):
                     style_id=style_id,
                     hit_fetch_cap=fetch_res.hit_hard_cap,
                     from_cache=from_cache,
-                    public_share=False,
+                    public_share=not private,
                     requester_display=requester_display,
                 )
                 session_ctx = SummarySessionContext(
@@ -354,6 +355,7 @@ class TldrCog(commands.Cog):
                     latest_message_id=fetch_res.latest_message_id,
                     hit_fetch_cap=fetch_res.hit_hard_cap,
                     from_cache=from_cache,
+                    is_private=private,
                 )
                 view = SummaryActionView(
                     ctx=session_ctx,
@@ -365,6 +367,7 @@ class TldrCog(commands.Cog):
                     content=None,
                     embed=pages[0],
                     view=view,
+                    allowed_mentions=discord.AllowedMentions.none(),
                 )
         except ConcurrencyLimitError as exc:
             await interaction.response.send_message(t(lang, exc.scope), ephemeral=True)
@@ -380,6 +383,7 @@ class TldrCog(commands.Cog):
         style="Summary format (default: Standard)",
         focus="Optional: specific topic or question to focus on (e.g. 'dinner plans', 'deadlines')",
         language="Optional: override output language for this summary only",
+        private="Optional: set True so only you can see the summary (default: visible to everyone)",
     )
     @app_commands.choices(style=STYLE_CHOICES, language=LANGUAGE_CHOICES)
     async def tldr_command(
@@ -390,6 +394,7 @@ class TldrCog(commands.Cog):
         style: app_commands.Choice[str] | None = None,
         focus: str | None = None,
         language: app_commands.Choice[str] | None = None,
+        private: bool = False,
     ) -> None:
         guild = interaction.guild
         lang = (
@@ -436,6 +441,7 @@ class TldrCog(commands.Cog):
             style_id=style.value if style else "standard",
             focus_query=focus,
             override_language=language.value if language else None,
+            private=private,
         )
 
     async def _context_menu_tldr(
@@ -450,4 +456,5 @@ class TldrCog(commands.Cog):
             style_id="standard",
             focus_query=None,
             override_language=None,
+            private=False,
         )

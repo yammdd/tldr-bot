@@ -147,7 +147,7 @@ UI_STRINGS: dict[str, dict[str, str]] = {
         "status_configured_yes": "Configured | Write-Only",
         "status_configured_no": "Not configured (run `/config`)",
         "status_field_state": "Status",
-        "status_field_provider": "Provider & Endpoint",
+        "status_field_provider": "Provider",
         "status_field_model": "Model",
         "status_field_lang": "Default language",
         "status_field_limits": "Context limits",
@@ -171,7 +171,7 @@ UI_STRINGS: dict[str, dict[str, str]] = {
             "- `/tldr count:500`: summarize the last 500 messages\n"
             "- `/tldr since:6h`: summarize by timeframe (`30m`, `2h`, `24h`, `3d`, `today`)\n"
             "- Right-click any message > **Apps > TL;DR from here**: catch up from that exact message\n"
-            "- Summaries are private by default; click **Share** to post publicly if needed"
+            "- Summaries are visible to everyone by default; set `private:True` to keep one private"
         ),
         "help_footer": "Write-Only | Chat messages are never stored on disk",
         "unexpected_command_error": "An unexpected error occurred while running that command. Please try again.",
@@ -190,6 +190,7 @@ UI_STRINGS: dict[str, dict[str, str]] = {
         "summary_open_header": "Open questions",
         "summary_highlights_header": "Links & files",
         "summary_mentions_header": "Mentions of you",
+        "summary_mentions_public_header": "Mentions of {requester}",
         "summary_by_person_header": "By participant",
         "summary_jump_link": "jump",
         "summary_jump_full": "jump",
@@ -201,7 +202,7 @@ UI_STRINGS: dict[str, dict[str, str]] = {
             "Only visible to you | {fetched} -> {lines} | {tokens:,} tok | {elapsed:.1f}s | {model}{cache_badge}"
         ),
         "summary_public_footer": (
-            "Shared by {requester} | {fetched} msgs | {time_range} | {model}"
+            "Requested by {requester} | {fetched} -> {lines} | {tokens:,} tok | {elapsed:.1f}s | {model}{cache_badge}"
         ),
         "topic_status_decided": "Decided",
         "topic_status_open": "Open",
@@ -317,7 +318,7 @@ UI_STRINGS: dict[str, dict[str, str]] = {
         "status_configured_yes": "Đã cấu hình | Write-Only",
         "status_configured_no": "Chưa cấu hình (dùng `/config`)",
         "status_field_state": "Trạng thái",
-        "status_field_provider": "Provider & Endpoint",
+        "status_field_provider": "Provider",
         "status_field_model": "Model",
         "status_field_lang": "Ngôn ngữ mặc định",
         "status_field_limits": "Giới hạn ngữ cảnh",
@@ -341,7 +342,7 @@ UI_STRINGS: dict[str, dict[str, str]] = {
             "- `/tldr count:500`: tóm tắt 500 tin nhắn gần nhất\n"
             "- `/tldr since:6h`: tóm tắt theo mốc thời gian (`30m`, `2h`, `24h`, `3d`, `today`)\n"
             "- Chuột phải tin nhắn > **Apps > TL;DR from here**: tóm tắt từ đúng vạch tin chưa đọc\n"
-            "- Kết quả mặc định chỉ mình bạn thấy; dùng nút **Chia sẻ** để đăng công khai nếu cần"
+            "- Bản tóm tắt mặc định hiển thị cho mọi người cùng xem; chọn `private:True` nếu muốn xem riêng"
         ),
         "help_footer": "Write-Only | Không lưu nội dung tin nhắn chat lên ổ đĩa",
         "unexpected_command_error": "Đã xảy ra lỗi ngoài dự kiến khi xử lý lệnh. Vui lòng thử lại sau.",
@@ -360,6 +361,7 @@ UI_STRINGS: dict[str, dict[str, str]] = {
         "summary_open_header": "Còn bỏ ngỏ",
         "summary_highlights_header": "Link & Tài liệu",
         "summary_mentions_header": "Nhắc đến bạn",
+        "summary_mentions_public_header": "Nhắc đến {requester}",
         "summary_by_person_header": "Theo từng người tham gia",
         "summary_jump_link": "xem",
         "summary_jump_full": "tới tin nhắn",
@@ -371,7 +373,7 @@ UI_STRINGS: dict[str, dict[str, str]] = {
             "Chỉ mình bạn thấy | {fetched} -> {lines} | {tokens:,} tok | {elapsed:.1f}s | {model}{cache_badge}"
         ),
         "summary_public_footer": (
-            "Chia sẻ bởi {requester} | {fetched} tin | {time_range} | {model}"
+            "Yêu cầu bởi {requester} | {fetched} -> {lines} | {tokens:,} tok | {elapsed:.1f}s | {model}{cache_badge}"
         ),
         "topic_status_decided": "Đã chốt",
         "topic_status_open": "Chưa chốt",
@@ -414,8 +416,13 @@ def get_language_spec(code: str | None, fallback: str = "en") -> LanguageSpec:
 def t(lang_code: str, key: str, **kwargs: Any) -> str:
     spec = get_language_spec(lang_code)
     catalog = UI_STRINGS.get(spec.ui_locale, UI_STRINGS["en"])
-    template = catalog.get(key) or UI_STRINGS["en"].get(key) or key
-    if kwargs:
+    if key in catalog:
+        template = catalog[key]
+    elif key in UI_STRINGS["en"]:
+        template = UI_STRINGS["en"][key]
+    else:
+        template = key
+    if kwargs and template:
         try:
             return template.format(**kwargs)
         except (KeyError, ValueError):
