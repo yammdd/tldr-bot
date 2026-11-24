@@ -7,7 +7,7 @@ import logging
 import discord
 
 from tldr_bot.discord_ext.cache import SummaryCache
-from tldr_bot.i18n import GuildPreferencesStore, t
+from tldr_bot.i18n import t
 from tldr_bot.llm.client import LLMError, UnifiedLLMClient
 from tldr_bot.llm.presets import PROVIDER_PRESETS, ProviderPreset, get_preset
 from tldr_bot.security.permissions import check_role_above_bot
@@ -16,9 +16,8 @@ from tldr_bot.security.vault import KeyVault
 logger = logging.getLogger(__name__)
 
 
-def format_llm_error(lang_code: str, error: LLMError) -> str:
+def format_llm_error(error: LLMError) -> str:
     return t(
-        lang_code,
         error.code,
         model=error.model,
         detail=error.detail or error.code,
@@ -34,21 +33,18 @@ class ApiConfigModal(discord.ui.Modal):
         preset: ProviderPreset,
         vault: KeyVault,
         llm_client: UnifiedLLMClient,
-        prefs: GuildPreferencesStore,
         cache: SummaryCache,
-        lang_code: str,
     ) -> None:
         super().__init__(
-            title=t(lang_code, "config_modal_title", provider_name=preset.name)[:45]
+            title=t("config_modal_title", provider_name=preset.name)[:45]
         )
         self._preset = preset
         self._vault = vault
         self._llm = llm_client
-        self._prefs = prefs
         self._cache = cache
 
         self.api_key_input = discord.ui.TextInput(
-            label=t(lang_code, "config_field_apikey")[:45],
+            label=t("config_field_apikey")[:45],
             style=discord.TextStyle.short,
             placeholder="sk-... / AIza... / AQ....",
             required=True,
@@ -56,7 +52,7 @@ class ApiConfigModal(discord.ui.Modal):
             max_length=300,
         )
         self.endpoint_input = discord.ui.TextInput(
-            label=t(lang_code, "config_field_endpoint")[:45],
+            label=t("config_field_endpoint")[:45],
             style=discord.TextStyle.short,
             default=preset.default_base_url,
             placeholder="https://api.example.com/v1",
@@ -65,9 +61,7 @@ class ApiConfigModal(discord.ui.Modal):
             max_length=250,
         )
         self.model_input = discord.ui.TextInput(
-            label=t(
-                lang_code, "config_field_model", default_model=preset.default_model
-            )[:45],
+            label=t("config_field_model", default_model=preset.default_model)[:45],
             style=discord.TextStyle.short,
             default="" if preset.is_custom else preset.default_model,
             placeholder=preset.default_model,
@@ -82,12 +76,11 @@ class ApiConfigModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        lang = self._prefs.get_language(guild.id if guild else None)
         perm = check_role_above_bot(interaction.user, guild)
         if not perm.allowed:
             key = "guild_only" if perm.reason == "guild_only" else "perm_role_too_low"
             await interaction.response.send_message(
-                t(lang, key, bot_role=perm.bot_top_role_name),
+                t(key, bot_role=perm.bot_top_role_name),
                 ephemeral=True,
             )
             return
@@ -99,7 +92,6 @@ class ApiConfigModal(discord.ui.Modal):
 
         await interaction.response.send_message(
             t(
-                lang,
                 "config_testing",
                 provider_name=self._preset.name,
                 model=raw_model,
@@ -114,18 +106,17 @@ class ApiConfigModal(discord.ui.Modal):
                 model=raw_model,
             )
         except LLMError as exc:
-            err_msg = format_llm_error(lang, exc)
+            err_msg = format_llm_error(exc)
             await interaction.edit_original_response(
-                content=t(lang, "config_failed_keep_old", error=err_msg)
+                content=t("config_failed_keep_old", error=err_msg)
             )
             return
         except Exception as exc:  # pragma: no cover - defensive catch
             logger.exception("Unexpected error during API key verification for guild %s", guild.id)
             await interaction.edit_original_response(
                 content=t(
-                    lang,
                     "config_failed_keep_old",
-                    error=t(lang, "err_unknown", detail=type(exc).__name__),
+                    error=t("err_unknown", detail=type(exc).__name__),
                 )
             )
             return
@@ -142,7 +133,6 @@ class ApiConfigModal(discord.ui.Modal):
 
         await interaction.edit_original_response(
             content=t(
-                lang,
                 "config_success",
                 latency_ms=smoke.latency_ms,
                 provider_name=status.provider_name,
@@ -159,9 +149,7 @@ class ProviderSelect(discord.ui.Select):
         *,
         vault: KeyVault,
         llm_client: UnifiedLLMClient,
-        prefs: GuildPreferencesStore,
         cache: SummaryCache,
-        lang_code: str,
     ) -> None:
         options = [
             discord.SelectOption(
@@ -172,24 +160,21 @@ class ProviderSelect(discord.ui.Select):
             for p in PROVIDER_PRESETS
         ]
         super().__init__(
-            placeholder=t(lang_code, "config_select_placeholder")[:100],
+            placeholder=t("config_select_placeholder")[:100],
             min_values=1,
             max_values=1,
             options=options,
         )
         self._vault = vault
         self._llm = llm_client
-        self._prefs = prefs
         self._cache = cache
-        self._lang = lang_code
 
     async def callback(self, interaction: discord.Interaction) -> None:
         perm = check_role_above_bot(interaction.user, interaction.guild)
         if not perm.allowed:
-            lang = self._prefs.get_language(interaction.guild.id if interaction.guild else None)
             key = "guild_only" if perm.reason == "guild_only" else "perm_role_too_low"
             await interaction.response.send_message(
-                t(lang, key, bot_role=perm.bot_top_role_name),
+                t(key, bot_role=perm.bot_top_role_name),
                 ephemeral=True,
             )
             return
@@ -199,9 +184,7 @@ class ProviderSelect(discord.ui.Select):
             preset=preset,
             vault=self._vault,
             llm_client=self._llm,
-            prefs=self._prefs,
             cache=self._cache,
-            lang_code=self._lang,
         )
         await interaction.response.send_modal(modal)
 
@@ -214,18 +197,14 @@ class ProviderConfigView(discord.ui.View):
         *,
         vault: KeyVault,
         llm_client: UnifiedLLMClient,
-        prefs: GuildPreferencesStore,
         cache: SummaryCache,
-        lang_code: str,
     ) -> None:
         super().__init__(timeout=300)
         self.add_item(
             ProviderSelect(
                 vault=vault,
                 llm_client=llm_client,
-                prefs=prefs,
                 cache=cache,
-                lang_code=lang_code,
             )
         )
 
@@ -237,12 +216,11 @@ async def verify_and_switch_model(
     vault: KeyVault,
     llm_client: UnifiedLLMClient,
     cache: SummaryCache,
-    lang_code: str,
 ) -> tuple[bool, str]:
     """Run a live smoke test with the guild's existing key and switch model only if it passes."""
     creds = vault.get_runtime_credentials(guild_id)
     if creds is None:
-        return False, t(lang_code, "not_configured")
+        return False, t("not_configured")
 
     clean_model = new_model.strip()
     try:
@@ -253,26 +231,23 @@ async def verify_and_switch_model(
         )
     except LLMError as exc:
         return False, t(
-            lang_code,
             "model_failed_keep_old",
             new_model=clean_model,
             old_model=creds.model,
-            error=format_llm_error(lang_code, exc),
+            error=format_llm_error(exc),
         )
     except Exception as exc:  # pragma: no cover - defensive catch
         logger.exception("Unexpected error during model switch in guild %s", guild_id)
         return False, t(
-            lang_code,
             "model_failed_keep_old",
             new_model=clean_model,
             old_model=creds.model,
-            error=t(lang_code, "err_unknown", detail=type(exc).__name__),
+            error=t("err_unknown", detail=type(exc).__name__),
         )
 
     status = vault.update_model(guild_id, clean_model)
     cache.clear_guild(guild_id)
     return True, t(
-        lang_code,
         "model_switched",
         latency_ms=smoke.latency_ms,
         provider_name=status.provider_name,
@@ -290,18 +265,15 @@ class ManualModelModal(discord.ui.Modal):
         current_model: str,
         vault: KeyVault,
         llm_client: UnifiedLLMClient,
-        prefs: GuildPreferencesStore,
         cache: SummaryCache,
-        lang_code: str,
     ) -> None:
-        super().__init__(title=t(lang_code, "model_modal_title")[:45])
+        super().__init__(title=t("model_modal_title")[:45])
         self._vault = vault
         self._llm = llm_client
-        self._prefs = prefs
         self._cache = cache
 
         self.model_input = discord.ui.TextInput(
-            label=t(lang_code, "model_modal_field")[:45],
+            label=t("model_modal_field")[:45],
             style=discord.TextStyle.short,
             default=current_model,
             placeholder=current_model or "gemini-3.8-flash",
@@ -313,12 +285,11 @@ class ManualModelModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        lang = self._prefs.get_language(guild.id if guild else None)
         perm = check_role_above_bot(interaction.user, guild)
         if not perm.allowed:
             key = "guild_only" if perm.reason == "guild_only" else "perm_role_too_low"
             await interaction.response.send_message(
-                t(lang, key, bot_role=perm.bot_top_role_name),
+                t(key, bot_role=perm.bot_top_role_name),
                 ephemeral=True,
             )
             return
@@ -326,12 +297,12 @@ class ManualModelModal(discord.ui.Modal):
         assert guild is not None
         status = self._vault.get_public_status(guild.id)
         if not status.configured:
-            await interaction.response.send_message(t(lang, "not_configured"), ephemeral=True)
+            await interaction.response.send_message(t("not_configured"), ephemeral=True)
             return
 
         new_model = str(self.model_input.value).strip()
         await interaction.response.send_message(
-            t(lang, "model_testing", model=new_model, provider_name=status.provider_name),
+            t("model_testing", model=new_model, provider_name=status.provider_name),
             ephemeral=True,
         )
         _ok, msg = await verify_and_switch_model(
@@ -340,7 +311,6 @@ class ManualModelModal(discord.ui.Modal):
             vault=self._vault,
             llm_client=self._llm,
             cache=self._cache,
-            lang_code=lang,
         )
         await interaction.edit_original_response(content=msg)
 
@@ -358,9 +328,7 @@ class ModelPickerView(discord.ui.View):
         panel_embed: discord.Embed,
         vault: KeyVault,
         llm_client: UnifiedLLMClient,
-        prefs: GuildPreferencesStore,
         cache: SummaryCache,
-        lang_code: str,
     ) -> None:
         super().__init__(timeout=300)
         self._models = models
@@ -368,21 +336,18 @@ class ModelPickerView(discord.ui.View):
         self._panel_embed = panel_embed
         self._vault = vault
         self._llm = llm_client
-        self._prefs = prefs
         self._cache = cache
-        self._lang = lang_code
         self._page = 0
         self._total_pages = max(1, (len(models) + self._PAGE_SIZE - 1) // self._PAGE_SIZE)
         self._rebuild_items()
 
     def _rebuild_items(self) -> None:
         self.clear_items()
-        lang = self._lang
 
         if self._models:
             start = self._page * self._PAGE_SIZE
             slice_models = self._models[start : start + self._PAGE_SIZE]
-            active_tag = t(lang, "model_option_active")
+            active_tag = t("model_option_active")
             options = [
                 discord.SelectOption(
                     label=mid[:100],
@@ -393,7 +358,6 @@ class ModelPickerView(discord.ui.View):
                 for mid in slice_models
             ]
             placeholder = t(
-                lang,
                 "model_select_placeholder",
                 start=start + 1,
                 end=start + len(slice_models),
@@ -411,14 +375,14 @@ class ModelPickerView(discord.ui.View):
 
         if self._total_pages > 1:
             prev_btn = discord.ui.Button(
-                label=t(lang, "btn_prev"),
+                label=t("btn_prev"),
                 style=discord.ButtonStyle.secondary,
                 disabled=self._page <= 0,
                 row=1,
             )
             prev_btn.callback = self._on_prev
             next_btn = discord.ui.Button(
-                label=t(lang, "btn_next"),
+                label=t("btn_next"),
                 style=discord.ButtonStyle.secondary,
                 disabled=self._page >= self._total_pages - 1,
                 row=1,
@@ -428,7 +392,7 @@ class ModelPickerView(discord.ui.View):
             self.add_item(next_btn)
 
         manual_btn = discord.ui.Button(
-            label=t(lang, "model_btn_manual"),
+            label=t("model_btn_manual"),
             style=discord.ButtonStyle.secondary,
             row=1,
         )
@@ -450,7 +414,7 @@ class ModelPickerView(discord.ui.View):
         if not perm.allowed:
             key = "guild_only" if perm.reason == "guild_only" else "perm_role_too_low"
             await interaction.response.send_message(
-                t(self._lang, key, bot_role=perm.bot_top_role_name),
+                t(key, bot_role=perm.bot_top_role_name),
                 ephemeral=True,
             )
             return
@@ -459,20 +423,17 @@ class ModelPickerView(discord.ui.View):
             current_model=self._current_model,
             vault=self._vault,
             llm_client=self._llm,
-            prefs=self._prefs,
             cache=self._cache,
-            lang_code=self._lang,
         )
         await interaction.response.send_modal(modal)
 
     async def _on_select(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
-        lang = self._prefs.get_language(guild.id if guild else None)
         perm = check_role_above_bot(interaction.user, guild)
         if not perm.allowed:
             key = "guild_only" if perm.reason == "guild_only" else "perm_role_too_low"
             await interaction.response.send_message(
-                t(lang, key, bot_role=perm.bot_top_role_name),
+                t(key, bot_role=perm.bot_top_role_name),
                 ephemeral=True,
             )
             return
@@ -482,12 +443,12 @@ class ModelPickerView(discord.ui.View):
         status = self._vault.get_public_status(guild.id)
         if not status.configured:
             await interaction.response.edit_message(
-                content=t(lang, "not_configured"), embed=None, view=None
+                content=t("not_configured"), embed=None, view=None
             )
             return
 
         await interaction.response.edit_message(
-            content=t(lang, "model_testing", model=selected, provider_name=status.provider_name),
+            content=t("model_testing", model=selected, provider_name=status.provider_name),
             embed=None,
             view=None,
         )
@@ -497,7 +458,6 @@ class ModelPickerView(discord.ui.View):
             vault=self._vault,
             llm_client=self._llm,
             cache=self._cache,
-            lang_code=lang,
         )
         if ok:
             await interaction.edit_original_response(content=msg, embed=None, view=None)

@@ -16,52 +16,27 @@ _CHANNEL_MENTION_RE = re.compile(r"<#(\d+)>")
 _ROLE_MENTION_RE = re.compile(r"<@&(\d+)>")
 _WHITESPACE_RE = re.compile(r"[ \t]+")
 _NEWLINES_RE = re.compile(r"\n{2,}")
-_WORD_CHAR_RE = re.compile(r"[0-9A-Za-zÀ-ỹ\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]")
+_WORD_CHAR_RE = re.compile(r"[0-9A-Za-z\u00c0-\u1ef9\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]")
 
-# Short utterances that carry crucial agreement/decision meaning in group chats
+# Short symbolic or shorthand confirmations that carry real agreement/decision meaning in group chats
 _MEANINGFUL_SHORT_WORDS: frozenset[str] = frozenset(
     {
         "ok",
         "oke",
         "okie",
-        "okela",
         "okay",
         "k",
         "kk",
-        "uh",
-        "uhm",
-        "ừ",
-        "ừm",
-        "uk",
-        "ukie",
         "yes",
         "no",
         "yep",
         "nope",
         "nah",
-        "ko",
-        "khong",
-        "không",
-        "dc",
-        "đc",
-        "được",
-        "chốt",
-        "chot",
-        "đi",
-        "di",
-        "bận",
-        "ban",
         "pass",
         "skip",
         "done",
-        "xong",
         "+1",
         "-1",
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
     }
 )
 

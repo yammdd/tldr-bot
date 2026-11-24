@@ -389,14 +389,12 @@ def test_embed_builder_hides_personal_mentions_on_public_share() -> None:
         result=summary,
         conv=conv,
         channel_name="general",
-        lang_code="en",
         public_share=False,
     )
     public_embeds = build_summary_embeds(
         result=summary,
         conv=conv,
         channel_name="general",
-        lang_code="en",
         public_share=True,
         requester_display="Alex",
     )
@@ -457,7 +455,6 @@ def test_embed_builder_never_leaks_info_status_key_or_breaks_jump_links() -> Non
         result=summary,
         conv=conv,
         channel_name="level",
-        lang_code="vi",
         public_share=True,
         requester_display="Yamm",
     )
@@ -465,7 +462,7 @@ def test_embed_builder_never_leaks_info_status_key_or_breaks_jump_links() -> Non
     assert "topic_status_info" not in topic_val
     assert len(topic_val) <= 1024
     # Both jump links preserved intact with closing parentheses
-    assert f"([xem 1]({u1}), [xem 2]({u2}))" in topic_val
+    assert f"([jump 1]({u1}), [jump 2]({u2}))" in topic_val
 
 
 @pytest.mark.asyncio

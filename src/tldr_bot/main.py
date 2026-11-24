@@ -126,11 +126,10 @@ class TldrBot(commands.AutoShardedBot):
         error: discord.app_commands.AppCommandError,
     ) -> None:
         guild_id = interaction.guild.id if interaction.guild else None
-        lang = self.prefs.get_language(guild_id)
         logger.exception(
             "Unhandled app command error in guild %s: %s", guild_id, type(error).__name__
         )
-        msg = t(lang, "unexpected_command_error")
+        msg = t("unexpected_command_error")
         try:
             if interaction.response.is_done():
                 await interaction.followup.send(msg, ephemeral=True)

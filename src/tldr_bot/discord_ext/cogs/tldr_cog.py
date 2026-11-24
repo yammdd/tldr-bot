@@ -43,12 +43,12 @@ class TldrCog(commands.Cog):
     async def cog_unload(self) -> None:
         self.bot.tree.remove_command(self._ctx_menu.name, type=self._ctx_menu.type)
 
-    def _format_any_error(self, lang_code: str, exc: Exception) -> str:
+    def _format_any_error(self, exc: Exception) -> str:
         if isinstance(exc, LLMError):
-            return format_llm_error(lang_code, exc)
+            return format_llm_error(exc)
         if isinstance(exc, ConcurrencyLimitError):
-            return t(lang_code, exc.scope)
-        return t(lang_code, "err_unknown", detail=type(exc).__name__)
+            return t(exc.scope)
+        return t("err_unknown", detail=type(exc).__name__)
 
     def _has_channel_history_permission(self, interaction: discord.Interaction) -> bool:
         guild = interaction.guild
@@ -92,34 +92,32 @@ class TldrCog(commands.Cog):
 
     async def _validate_access(
         self, interaction: discord.Interaction
-    ) -> tuple[discord.Guild, object, str, GuildLLMConfig] | None:
+    ) -> tuple[discord.Guild, object, GuildLLMConfig] | None:
         guild = interaction.guild
         channel = interaction.channel
         if guild is None or channel is None or not hasattr(channel, "history"):
-            await interaction.response.send_message(t("en", "guild_only"), ephemeral=True)
+            await interaction.response.send_message(t("guild_only"), ephemeral=True)
             return None
-
-        lang = self.bot.prefs.get_language(guild.id)
 
         creds = self.bot.vault.get_runtime_credentials(guild.id)
         if creds is None:
-            await interaction.response.send_message(t(lang, "not_configured"), ephemeral=True)
+            await interaction.response.send_message(t("not_configured"), ephemeral=True)
             return None
 
         if not self._has_channel_history_permission(interaction):
             await interaction.response.send_message(
-                t(lang, "perm_no_channel_history"), ephemeral=True
+                t("perm_no_channel_history"), ephemeral=True
             )
             return None
 
         wait_sec = self.bot.cooldowns.check_remaining(guild.id, interaction.user.id)
         if wait_sec > 0:
             await interaction.response.send_message(
-                t(lang, "cooldown_wait", seconds=wait_sec), ephemeral=True
+                t("cooldown_wait", seconds=wait_sec), ephemeral=True
             )
             return None
 
-        return guild, channel, lang, creds
+        return guild, channel, creds
 
     async def _fetch_history(
         self,
@@ -127,7 +125,6 @@ class TldrCog(commands.Cog):
         channel: object,
         *,
         channel_name: str,
-        lang: str,
         count: int | None,
         since_delta: timedelta | None,
         after_message: discord.Message | None,
@@ -135,7 +132,7 @@ class TldrCog(commands.Cog):
         async def _on_fetch_progress(fetched: int) -> None:
             try:
                 await interaction.edit_original_response(
-                    content=t(lang, "progress_fetching", channel=channel_name, fetched=fetched)
+                    content=t("progress_fetching", channel=channel_name, fetched=fetched)
                 )
             except discord.HTTPException:
                 pass
@@ -150,7 +147,7 @@ class TldrCog(commands.Cog):
                 on_progress=_on_fetch_progress,
             )
         except discord.Forbidden:
-            await interaction.edit_original_response(content=t(lang, "perm_no_channel_history"))
+            await interaction.edit_original_response(content=t("perm_no_channel_history"))
             return None
         except Exception as exc:
             logger.exception(
@@ -158,7 +155,7 @@ class TldrCog(commands.Cog):
                 getattr(interaction.guild, "id", None),
             )
             await interaction.edit_original_response(
-                content=t(lang, "summary_failed", error=self._format_any_error(lang, exc))
+                content=t("summary_failed", error=self._format_any_error(exc))
             )
             return None
 
@@ -172,7 +169,7 @@ class TldrCog(commands.Cog):
         channel_name: str,
         full_scope_tag: str,
         latest_message_id: int,
-        lang: str,
+        summary_lang: str,
         focus_query: str | None,
     ) -> tuple[SummaryResult, bool] | None:
         cache_key = SummaryCache.make_key(
@@ -181,7 +178,7 @@ class TldrCog(commands.Cog):
             latest_message_id=latest_message_id,
             scope_tag=full_scope_tag,
             style_id="default",
-            language_code=lang,
+            language_code=summary_lang,
             focus_query=focus_query,
             model_id=creds.model,
         )
@@ -195,7 +192,6 @@ class TldrCog(commands.Cog):
             try:
                 if mode == "map_reduce":
                     msg = t(
-                        lang,
                         "progress_map_reduce",
                         fetched=conv.raw_message_count,
                         tokens=est_tokens,
@@ -204,7 +200,6 @@ class TldrCog(commands.Cog):
                     )
                 else:
                     msg = t(
-                        lang,
                         "progress_analyzing",
                         fetched=conv.raw_message_count,
                         lines=non_break_count,
@@ -223,19 +218,19 @@ class TldrCog(commands.Cog):
                 participants_summary=conv.participants_summary,
                 turns=conv.turns,
                 valid_ref_ids=conv.valid_ref_ids,
-                language_code=lang,
+                language_code=summary_lang,
                 focus_query=focus_query,
                 on_stage_update=_on_stage,
             )
         except LLMError as exc:
             await interaction.edit_original_response(
-                content=t(lang, "summary_failed", error=format_llm_error(lang, exc))
+                content=t("summary_failed", error=format_llm_error(exc))
             )
             return None
         except Exception as exc:
             logger.exception("Unexpected summarization failure in guild %s", guild_id)
             await interaction.edit_original_response(
-                content=t(lang, "summary_failed", error=self._format_any_error(lang, exc))
+                content=t("summary_failed", error=self._format_any_error(exc))
             )
             return None
 
@@ -256,7 +251,8 @@ class TldrCog(commands.Cog):
         validated = await self._validate_access(interaction)
         if validated is None:
             return
-        guild, channel, lang, creds = validated
+        guild, channel, creds = validated
+        summary_lang = self.bot.prefs.get_language(guild.id)
 
         try:
             async with self.bot.concurrency.acquire(guild.id):
@@ -268,7 +264,6 @@ class TldrCog(commands.Cog):
                     interaction,
                     channel,
                     channel_name=channel_name,
-                    lang=lang,
                     count=count,
                     since_delta=since_delta,
                     after_message=after_message,
@@ -282,7 +277,7 @@ class TldrCog(commands.Cog):
                     max_single_message_chars=self.bot.settings.max_single_message_chars,
                 )
                 if not any(not turn.is_session_break for turn in conv.turns):
-                    await interaction.edit_original_response(content=t(lang, "no_messages_found"))
+                    await interaction.edit_original_response(content=t("no_messages_found"))
                     return
 
                 full_scope_tag = f"{getattr(channel, 'id', 0)}:{scope_tag}"
@@ -294,7 +289,7 @@ class TldrCog(commands.Cog):
                     channel_name=channel_name,
                     full_scope_tag=full_scope_tag,
                     latest_message_id=fetch_res.latest_message_id,
-                    lang=lang,
+                    summary_lang=summary_lang,
                     focus_query=focus_query,
                 )
                 if outcome is None:
@@ -306,7 +301,6 @@ class TldrCog(commands.Cog):
                     result=result,
                     conv=conv,
                     channel_name=channel_name,
-                    lang_code=lang,
                     hit_fetch_cap=fetch_res.hit_hard_cap,
                     from_cache=from_cache,
                     public_share=not private,
@@ -319,7 +313,7 @@ class TldrCog(commands.Cog):
                     requester_display=requester_display,
                     conv=conv,
                     result=result,
-                    lang_code=lang,
+                    lang_code=summary_lang,
                     focus_query=focus_query,
                     scope_tag=full_scope_tag,
                     latest_message_id=fetch_res.latest_message_id,
@@ -340,7 +334,7 @@ class TldrCog(commands.Cog):
                     allowed_mentions=discord.AllowedMentions.none(),
                 )
         except ConcurrencyLimitError as exc:
-            await interaction.response.send_message(t(lang, exc.scope), ephemeral=True)
+            await interaction.response.send_message(t(exc.scope), ephemeral=True)
 
     @app_commands.command(
         name="tldr",
@@ -361,8 +355,6 @@ class TldrCog(commands.Cog):
         focus: str | None = None,
         private: bool = False,
     ) -> None:
-        guild = interaction.guild
-        lang = self.bot.prefs.get_language(guild.id if guild else None)
         settings = self.bot.settings
 
         since_delta: timedelta | None = None
@@ -371,7 +363,7 @@ class TldrCog(commands.Cog):
             since_delta = parse_since_duration(since, max_days=settings.max_days_since)
             if since_delta is None:
                 await interaction.response.send_message(
-                    t(lang, "invalid_since", max_days=settings.max_days_since),
+                    t("invalid_since", max_days=settings.max_days_since),
                     ephemeral=True,
                 )
                 return
@@ -384,7 +376,6 @@ class TldrCog(commands.Cog):
             ):
                 await interaction.response.send_message(
                     t(
-                        lang,
                         "invalid_count",
                         min_count=settings.min_message_count,
                         max_count=settings.max_messages_hard_cap,

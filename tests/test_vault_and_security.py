@@ -204,19 +204,16 @@ def test_guild_language_preferences_sqlite_and_copy_hygiene(tmp_path: Path) -> N
     assert reloaded.get_language(555) == "en"
     reloaded.close()
 
-    assert "Permission denied" in t("en", "perm_role_too_low", bot_role="Bot")
-    assert t("vi", "perm_role_too_low", bot_role="Bot") != t("en", "perm_role_too_low", bot_role="Bot")
+    assert "Permission denied" in t("perm_role_too_low", bot_role="Bot")
     # Empty string catalog entries must stay empty and never fall back to the key name
-    assert t("en", "topic_status_info") == ""
-    assert t("vi", "topic_status_info") == ""
+    assert t("topic_status_info") == ""
 
     # Copy hygiene guards: zero exclamation marks, em-dashes, en-dashes, or third-party AI brand copy
-    for locale, strings in UI_STRINGS.items():
-        for key, val in strings.items():
-            assert "!" not in val, f"Exclamation mark in UI_STRINGS[{locale}][{key}]"
-            assert "\u2014" not in val, f"Em-dash in UI_STRINGS[{locale}][{key}]"
-            assert "\u2013" not in val, f"En-dash in UI_STRINGS[{locale}][{key}]"
-            assert "meta ai" not in val.lower(), f"Third-party brand copy in UI_STRINGS[{locale}][{key}]"
+    for key, val in UI_STRINGS.items():
+        assert "!" not in val, f"Exclamation mark in UI_STRINGS[{key}]"
+        assert "\u2014" not in val, f"Em-dash in UI_STRINGS[{key}]"
+        assert "\u2013" not in val, f"En-dash in UI_STRINGS[{key}]"
+        assert "meta ai" not in val.lower(), f"Third-party brand copy in UI_STRINGS[{key}]"
 
     readme = Path("README.md").read_text(encoding="utf-8")
     assert "\u2014" not in readme

@@ -50,10 +50,10 @@ def _format_line_with_suffix(prefix: str, body: str, suffix: str, *, max_len: in
     return f"{prefix}{clipped}...{suffix}"
 
 
-def _status_tag(status: str, lang_code: str) -> str:
+def _status_tag(status: str) -> str:
     if not status or status == "info":
         return ""
-    label = t(lang_code, f"topic_status_{status}")
+    label = t(f"topic_status_{status}")
     return f" `[{label}]`" if label else ""
 
 
@@ -78,7 +78,7 @@ def _chunk_lines_for_fields(lines: list[str], max_len: int = _FIELD_LIMIT) -> li
     return blocks
 
 
-def _format_participants_line(conv: PreprocessedConversation, lang_code: str) -> str:
+def _format_participants_line(conv: PreprocessedConversation) -> str:
     if not conv.participants:
         return ""
     top = conv.participants[:6]
@@ -86,7 +86,6 @@ def _format_participants_line(conv: PreprocessedConversation, lang_code: str) ->
     if len(conv.participants) > 6:
         names += f", +{len(conv.participants) - 6}"
     return t(
-        lang_code,
         "summary_participants",
         count=len(conv.participants),
         list=names,
@@ -97,21 +96,19 @@ def _build_header_description(
     *,
     result: SummaryResult,
     conv: PreprocessedConversation,
-    lang_code: str,
     hit_fetch_cap: bool,
 ) -> str:
     parts: list[str] = []
     if conv.time_range_label:
         parts.append(f"`{conv.time_range_label}`")
 
-    participants_line = _format_participants_line(conv, lang_code)
+    participants_line = _format_participants_line(conv)
     if participants_line:
         parts.append(participants_line)
 
     if hit_fetch_cap or result.was_token_capped:
         parts.append(
             t(
-                lang_code,
                 "summary_capped_note",
                 used=result.kept_raw_messages or conv.kept_message_count,
                 fetched=conv.raw_message_count,
@@ -131,11 +128,10 @@ def _collect_sections(
     *,
     result: SummaryResult,
     conv: PreprocessedConversation,
-    lang_code: str,
     public_share: bool,
 ) -> list[tuple[str, str]]:
-    jump_label = t(lang_code, "summary_jump_link")
-    jump_full = t(lang_code, "summary_jump_full")
+    jump_label = t("summary_jump_link")
+    jump_full = t("summary_jump_full")
     sections: list[tuple[str, str]] = []
 
     def _add_section(header: str, lines: list[str]) -> None:
@@ -147,13 +143,13 @@ def _collect_sections(
 
     topic_lines = [
         _format_line_with_suffix(
-            f"- **{topic.title}**{_status_tag(topic.status, lang_code)}: ",
+            f"- **{topic.title}**{_status_tag(topic.status)}: ",
             topic.summary,
             _render_jump_links(topic.ref_ids, conv.ref_to_jump_url, jump_label, max_links=2),
         )
         for topic in result.topics
     ]
-    _add_section(t(lang_code, "summary_topics_header"), topic_lines)
+    _add_section(t("summary_topics_header"), topic_lines)
 
     decision_lines = [f"- {d}" for d in result.decisions]
     for act in result.action_items:
@@ -164,10 +160,10 @@ def _collect_sections(
         )
         owner = f"**{act.owner}:** " if act.owner else ""
         decision_lines.append(_format_line_with_suffix(f"- {owner}", act.task, jump))
-    _add_section(t(lang_code, "summary_decisions_header"), decision_lines)
+    _add_section(t("summary_decisions_header"), decision_lines)
 
     _add_section(
-        t(lang_code, "summary_open_header"),
+        t("summary_open_header"),
         [f"- {q}" for q in result.open_questions],
     )
 
@@ -180,7 +176,7 @@ def _collect_sections(
         )
         by_part = f" (**{hl.shared_by}**)" if hl.shared_by else ""
         hl_lines.append(_format_line_with_suffix("- ", f"{hl.label}{by_part}", jump))
-    _add_section(t(lang_code, "summary_highlights_header"), hl_lines)
+    _add_section(t("summary_highlights_header"), hl_lines)
 
     if not public_share and conv.requester_mentions:
         mention_lines = [
@@ -191,7 +187,7 @@ def _collect_sections(
             )
             for hit in conv.requester_mentions[:5]
         ]
-        _add_section(t(lang_code, "summary_mentions_header"), mention_lines)
+        _add_section(t("summary_mentions_header"), mention_lines)
 
     return sections
 
@@ -201,35 +197,31 @@ def build_summary_embeds(
     result: SummaryResult,
     conv: PreprocessedConversation,
     channel_name: str,
-    lang_code: str,
     hit_fetch_cap: bool = False,
     from_cache: bool = False,
     public_share: bool = True,
     requester_display: str = "",
 ) -> list[discord.Embed]:
     """Render a SummaryResult into 1 or more clean editorial Discord Embed pages."""
-    title = t(lang_code, "summary_title", channel=channel_name)[:250]
+    title = t("summary_title", channel=channel_name)[:250]
     header_desc = _build_header_description(
         result=result,
         conv=conv,
-        lang_code=lang_code,
         hit_fetch_cap=hit_fetch_cap,
     )
     sections = _collect_sections(
         result=result,
         conv=conv,
-        lang_code=lang_code,
         public_share=public_share,
     )
 
     has_personal_mentions = not public_share and bool(conv.requester_mentions)
     accent = COLOR_TERRACOTTA if has_personal_mentions else COLOR_INK_SLATE
 
-    cache_badge = t(lang_code, "summary_cache_badge") if from_cache else ""
+    cache_badge = t("summary_cache_badge") if from_cache else ""
     non_break_lines = len([turn for turn in conv.turns if not turn.is_session_break])
     if public_share:
         footer_text = t(
-            lang_code,
             "summary_public_footer",
             requester=requester_display or "Member",
             fetched=conv.raw_message_count,
@@ -241,7 +233,6 @@ def build_summary_embeds(
         )
     else:
         footer_text = t(
-            lang_code,
             "summary_footer",
             fetched=conv.raw_message_count,
             lines=non_break_lines,
@@ -308,7 +299,7 @@ class SummaryActionView(discord.ui.View):
         ctx: SummarySessionContext,
         pages: list[discord.Embed],
         rerun_callback: ReRunCallback,
-        format_error_fn: Callable[[str, Exception], str],
+        format_error_fn: Callable[[Exception], str],
     ) -> None:
         super().__init__(timeout=900)
         self._ctx = ctx
@@ -320,18 +311,17 @@ class SummaryActionView(discord.ui.View):
 
     def _rebuild_buttons(self) -> None:
         self.clear_items()
-        lang = self._ctx.lang_code
 
         if len(self._pages) > 1:
             prev_btn = discord.ui.Button(
-                label=t(lang, "btn_prev"),
+                label=t("btn_prev"),
                 style=discord.ButtonStyle.secondary,
                 disabled=self._page_idx <= 0,
                 row=0,
             )
             prev_btn.callback = self._on_prev
             next_btn = discord.ui.Button(
-                label=t(lang, "btn_next"),
+                label=t("btn_next"),
                 style=discord.ButtonStyle.secondary,
                 disabled=self._page_idx >= len(self._pages) - 1,
                 row=0,
@@ -341,7 +331,7 @@ class SummaryActionView(discord.ui.View):
             self.add_item(next_btn)
 
         refresh_btn = discord.ui.Button(
-            label=t(lang, "btn_refresh"),
+            label=t("btn_refresh"),
             style=discord.ButtonStyle.secondary,
             row=0,
         )
@@ -364,16 +354,16 @@ class SummaryActionView(discord.ui.View):
 
     async def _on_refresh(self, interaction: discord.Interaction) -> None:
         await interaction.response.edit_message(
-            content=t(self._ctx.lang_code, "btn_working"),
+            content=t("btn_working"),
             embed=None,
             view=None,
         )
         try:
             new_result = await self._rerun(self._ctx)
         except Exception as exc:
-            err_text = self._format_error(self._ctx.lang_code, exc)
+            err_text = self._format_error(exc)
             await interaction.edit_original_response(
-                content=t(self._ctx.lang_code, "summary_failed", error=err_text),
+                content=t("summary_failed", error=err_text),
                 embed=None,
                 view=self,
             )
@@ -385,7 +375,6 @@ class SummaryActionView(discord.ui.View):
             result=new_result,
             conv=self._ctx.conv,
             channel_name=self._ctx.channel_name,
-            lang_code=self._ctx.lang_code,
             hit_fetch_cap=self._ctx.hit_fetch_cap,
             from_cache=False,
             public_share=not self._ctx.is_private,

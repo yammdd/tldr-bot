@@ -1,4 +1,4 @@
-"""Admin & configuration slash commands: /config, /language, /status, /reset_config."""
+"""Admin & configuration slash commands: /config, /model, /language, /status, /reset_config, /help."""
 
 from __future__ import annotations
 
@@ -18,30 +18,28 @@ from tldr_bot.llm.client import LLMError
 from tldr_bot.security.permissions import check_role_above_bot
 
 LANGUAGE_CHOICES: list[app_commands.Choice[str]] = [
-    app_commands.Choice(name=spec.native_label, value=spec.code)
+    app_commands.Choice(name=spec.label, value=spec.code)
     for spec in LANGUAGE_SPECS.values()
 ]
 
 
 class AdminCog(commands.Cog):
-    """Handles write-only API key configuration, default server language, and status."""
+    """Handles write-only API key configuration, model switching, summary language, and status."""
 
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    async def _require_higher_role(self, interaction: discord.Interaction) -> str | None:
-        """Verify caller is Owner or holds a role strictly above the bot; returns lang if allowed."""
-        guild = interaction.guild
-        lang = self.bot.prefs.get_language(guild.id if guild else None)
-        perm = check_role_above_bot(interaction.user, guild)
+    async def _require_higher_role(self, interaction: discord.Interaction) -> bool:
+        """Verify caller is Owner or holds a role strictly above the bot."""
+        perm = check_role_above_bot(interaction.user, interaction.guild)
         if not perm.allowed:
             key = "guild_only" if perm.reason == "guild_only" else "perm_role_too_low"
             await interaction.response.send_message(
-                t(lang, key, bot_role=perm.bot_top_role_name),
+                t(key, bot_role=perm.bot_top_role_name),
                 ephemeral=True,
             )
-            return None
-        return lang
+            return False
+        return True
 
     @app_commands.command(
         name="config",
@@ -49,21 +47,18 @@ class AdminCog(commands.Cog):
     )
     @app_commands.guild_only()
     async def config_command(self, interaction: discord.Interaction) -> None:
-        lang = await self._require_higher_role(interaction)
-        if lang is None:
+        if not await self._require_higher_role(interaction):
             return
 
         embed = discord.Embed(
-            title=t(lang, "config_panel_title"),
-            description=t(lang, "config_panel_desc", storage_mode=self.bot.vault.storage_mode),
+            title=t("config_panel_title"),
+            description=t("config_panel_desc", storage_mode=self.bot.vault.storage_mode),
             color=COLOR_INK_SLATE,
         )
         view = ProviderConfigView(
             vault=self.bot.vault,
             llm_client=self.bot.llm_client,
-            prefs=self.bot.prefs,
             cache=self.bot.summary_cache,
-            lang_code=lang,
         )
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
@@ -80,8 +75,7 @@ class AdminCog(commands.Cog):
         interaction: discord.Interaction,
         model_id: str | None = None,
     ) -> None:
-        lang = await self._require_higher_role(interaction)
-        if lang is None:
+        if not await self._require_higher_role(interaction):
             return
 
         assert interaction.guild is not None
@@ -89,14 +83,13 @@ class AdminCog(commands.Cog):
         creds = self.bot.vault.get_runtime_credentials(guild_id)
         status = self.bot.vault.get_public_status(guild_id)
         if creds is None or not status.configured:
-            await interaction.response.send_message(t(lang, "not_configured"), ephemeral=True)
+            await interaction.response.send_message(t("not_configured"), ephemeral=True)
             return
 
-        # Direct shortcut: /model model_id:gemini-flash-lite-latest
         if model_id and model_id.strip():
             target = model_id.strip()
             await interaction.response.send_message(
-                t(lang, "model_testing", model=target, provider_name=status.provider_name),
+                t("model_testing", model=target, provider_name=status.provider_name),
                 ephemeral=True,
             )
             _ok, msg = await verify_and_switch_model(
@@ -105,7 +98,6 @@ class AdminCog(commands.Cog):
                 vault=self.bot.vault,
                 llm_client=self.bot.llm_client,
                 cache=self.bot.summary_cache,
-                lang_code=lang,
             )
             await interaction.edit_original_response(content=msg)
             return
@@ -116,13 +108,12 @@ class AdminCog(commands.Cog):
         try:
             models = await self.bot.llm_client.list_chat_models(creds)
         except LLMError as exc:
-            fetch_error = format_llm_error(lang, exc)
+            fetch_error = format_llm_error(exc)
         except Exception as exc:
             fetch_error = type(exc).__name__
 
         if models:
             desc = t(
-                lang,
                 "model_panel_desc",
                 provider_name=status.provider_name,
                 endpoint_host=status.endpoint_host,
@@ -131,7 +122,6 @@ class AdminCog(commands.Cog):
             )
         else:
             desc = t(
-                lang,
                 "model_panel_no_list",
                 provider_name=status.provider_name,
                 endpoint_host=status.endpoint_host,
@@ -140,7 +130,7 @@ class AdminCog(commands.Cog):
             )
 
         embed = discord.Embed(
-            title=t(lang, "model_panel_title"),
+            title=t("model_panel_title"),
             description=desc,
             color=COLOR_INK_SLATE,
         )
@@ -150,31 +140,29 @@ class AdminCog(commands.Cog):
             panel_embed=embed,
             vault=self.bot.vault,
             llm_client=self.bot.llm_client,
-            prefs=self.bot.prefs,
             cache=self.bot.summary_cache,
-            lang_code=lang,
         )
         await interaction.edit_original_response(embed=embed, view=view)
 
     @app_commands.command(
         name="language",
-        description="Set the server default language for bot UI and summaries (Owner or Role above Bot)",
+        description="Set the summary output language for this server (Owner or Role above Bot)",
     )
     @app_commands.guild_only()
-    @app_commands.describe(language="Server default language")
+    @app_commands.describe(language="Language the AI writes summaries in")
     @app_commands.choices(language=LANGUAGE_CHOICES)
     async def language_command(
         self,
         interaction: discord.Interaction,
         language: app_commands.Choice[str],
     ) -> None:
-        if await self._require_higher_role(interaction) is None:
+        if not await self._require_higher_role(interaction):
             return
 
         assert interaction.guild is not None
         spec = self.bot.prefs.set_language(interaction.guild.id, language.value)
         await interaction.response.send_message(
-            t(spec.code, "lang_updated", language_label=spec.native_label),
+            t("lang_updated", language_label=spec.label),
             ephemeral=False,
             allowed_mentions=discord.AllowedMentions.none(),
         )
@@ -187,46 +175,41 @@ class AdminCog(commands.Cog):
     async def status_command(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:
-            await interaction.response.send_message(t("en", "guild_only"), ephemeral=True)
+            await interaction.response.send_message(t("guild_only"), ephemeral=True)
             return
 
-        lang = self.bot.prefs.get_language(guild.id)
-        lang_spec = get_language_spec(lang)
+        summary_lang = get_language_spec(self.bot.prefs.get_language(guild.id))
         status = self.bot.vault.get_public_status(guild.id)
         settings = self.bot.settings
 
         embed = discord.Embed(
-            title=t(lang, "status_title"),
+            title=t("status_title"),
             color=COLOR_SAGE if status.configured else COLOR_AMBER,
         )
         embed.add_field(
-            name=t(lang, "status_field_state"),
-            value=t(
-                lang,
-                "status_configured_yes" if status.configured else "status_configured_no",
-            ),
+            name=t("status_field_state"),
+            value=t("status_configured_yes" if status.configured else "status_configured_no"),
             inline=False,
         )
         if status.configured:
             embed.add_field(
-                name=t(lang, "status_field_provider"),
+                name=t("status_field_provider"),
                 value=f"**{status.provider_name}**",
                 inline=True,
             )
             embed.add_field(
-                name=t(lang, "status_field_model"),
+                name=t("status_field_model"),
                 value=f"`{status.model}`",
                 inline=True,
             )
         embed.add_field(
-            name=t(lang, "status_field_lang"),
-            value=lang_spec.native_label,
+            name=t("status_field_lang"),
+            value=summary_lang.label,
             inline=False,
         )
         embed.add_field(
-            name=t(lang, "status_field_limits"),
+            name=t("status_field_limits"),
             value=t(
-                lang,
                 "status_limits_val",
                 max_msgs=settings.max_messages_hard_cap,
                 max_days=settings.max_days_since,
@@ -235,7 +218,7 @@ class AdminCog(commands.Cog):
             ),
             inline=False,
         )
-        embed.set_footer(text=t(lang, "status_footer"))
+        embed.set_footer(text=t("status_footer"))
         await interaction.response.send_message(
             embed=embed,
             ephemeral=False,
@@ -248,39 +231,36 @@ class AdminCog(commands.Cog):
     )
     @app_commands.guild_only()
     async def reset_config_command(self, interaction: discord.Interaction) -> None:
-        lang = await self._require_higher_role(interaction)
-        if lang is None:
+        if not await self._require_higher_role(interaction):
             return
 
         assert interaction.guild is not None
         deleted = self.bot.vault.delete_config(interaction.guild.id)
         self.bot.summary_cache.clear_guild(interaction.guild.id)
         key = "config_reset_done" if deleted else "config_reset_empty"
-        await interaction.response.send_message(t(lang, key), ephemeral=True)
+        await interaction.response.send_message(t(key), ephemeral=True)
 
     @app_commands.command(
         name="help",
         description="Quick setup and usage guide for TL;DR Bot",
     )
     async def help_command(self, interaction: discord.Interaction) -> None:
-        guild_id = interaction.guild.id if interaction.guild else None
-        lang = self.bot.prefs.get_language(guild_id)
         embed = discord.Embed(
-            title=t(lang, "help_title"),
-            description=t(lang, "help_desc"),
+            title=t("help_title"),
+            description=t("help_desc"),
             color=COLOR_INK_SLATE,
         )
         embed.add_field(
-            name=t(lang, "help_setup_header"),
-            value=t(lang, "help_setup_body"),
+            name=t("help_setup_header"),
+            value=t("help_setup_body"),
             inline=False,
         )
         embed.add_field(
-            name=t(lang, "help_usage_header"),
-            value=t(lang, "help_usage_body"),
+            name=t("help_usage_header"),
+            value=t("help_usage_body"),
             inline=False,
         )
-        embed.set_footer(text=t(lang, "help_footer"))
+        embed.set_footer(text=t("help_footer"))
         await interaction.response.send_message(
             embed=embed,
             ephemeral=False,
