@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1360" height="480" viewBox="0 0 1360 480" role="img" aria-label="TL;DR Bot Discord profile banner">
+  <defs>
+    <!-- Twilight-Indigo to Rose-Lavender Sky (Matches bot-avatar.svg exactly) -->
+    <linearGradient id="sky-grad" x1="0.06" y1="0" x2="0.96" y2="1">
+      <stop offset="0%" stop-color="#1B213D" />
+      <stop offset="44%" stop-color="#353D6B" />
+      <stop offset="78%" stop-color="#765D8B" />
+      <stop offset="100%" stop-color="#C68492" />
+    </linearGradient>
+
+    <!-- Warm Peach-Gold Sunset Disc & Atmospheric Halo -->
+    <linearGradient id="sun-disc" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#FFF7DE" />
+      <stop offset="50%" stop-color="#FFC7A4" />
+      <stop offset="100%" stop-color="#F28592" />
+    </linearGradient>
+    <radialGradient id="sun-halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFD4B2" stop-opacity="0.56" />
+      <stop offset="55%" stop-color="#F0949E" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#353D6B" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="left-ambient" cx="14%" cy="82%" r="36%">
+      <stop offset="0%" stop-color="#F2A08C" stop-opacity="0.20" />
+      <stop offset="100%" stop-color="#1B213D" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Frosted Twilight Glass Card Gradient -->
+    <linearGradient id="card-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1E233A" stop-opacity="0.78" />
+      <stop offset="100%" stop-color="#272C46" stop-opacity="0.66" />
+    </linearGradient>
+    <linearGradient id="terracotta-bar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F0A076" />
+      <stop offset="55%" stop-color="#D9744E" />
+      <stop offset="100%" stop-color="#C86342" />
+    </linearGradient>
+
+    <clipPath id="clip-sun">
+      <circle cx="1072" cy="256" r="168" />
+    </clipPath>
+
+    <filter id="sun-bloom" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18" />
+    </filter>
+    <filter id="soft-shadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#111528" flood-opacity="0.40" />
+    </filter>
+    <!-- Matching tactile risograph paper micro-grain -->
+    <filter id="riso-grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.78" numOctaves="2" seed="29" result="noise" />
+      <feColorMatrix type="saturate" values="0" in="noise" result="mono" />
+      <feComponentTransfer in="mono" result="faint">
+        <feFuncA type="linear" slope="0.028" />
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" in2="faint" mode="overlay" />
+    </filter>
+  </defs>
+
+  <g filter="url(#riso-grain)">
+    <!-- LAYER 1: Seamless City-Pop Twilight Sky -->
+    <rect width="1360" height="480" fill="url(#sky-grad)" />
+    <rect width="1360" height="480" fill="url(#left-ambient)" />
+
+    <!-- Subtle editorial architectural grid lines (very quiet, never noisy) -->
+    <g stroke="#FFF6E6" stroke-width="1" opacity="0.06">
+      <line x1="0" y1="120" x2="1360" y2="120" />
+      <line x1="0" y1="360" x2="1360" y2="360" />
+      <line x1="360" y1="0" x2="360" y2="480" />
+    </g>
+
+    <!-- LAYER 2: Glowing Right-Aligned City-Pop Sunset Disc + Orbital Rings -->
+    <circle cx="1072" cy="256" r="320" fill="url(#sun-halo)" />
+    <circle cx="1072" cy="256" r="170" fill="url(#sun-disc)" filter="url(#sun-bloom)" opacity="0.50" />
+    <circle cx="1072" cy="256" r="168" fill="url(#sun-disc)" />
+    <!-- Classic City-Pop horizontal horizon bands slicing the lower sun disc -->
+    <g clip-path="url(#clip-sun)">
+      <rect x="947.0" y="318" width="250" height="4.0" rx="2.0" fill="#353B66" opacity="0.24" />
+<rect x="929.0" y="336" width="286" height="5.5" rx="2.8" fill="#353B66" opacity="0.32" />
+<rect x="920.0" y="358" width="304" height="7.0" rx="3.5" fill="#353B66" opacity="0.40" />
+<rect x="927.0" y="382" width="290" height="8.5" rx="4.2" fill="#353B66" opacity="0.48" />
+    </g>
+    <!-- Fine editorial dashed orbital arcs circling the sun -->
+    <circle cx="1072" cy="256" r="204" fill="none" stroke="#FFF4DF" stroke-width="1.3" stroke-dasharray="120 22 28 22" opacity="0.34" />
+    <circle cx="1072" cy="256" r="242" fill="none" stroke="#FFF4DF" stroke-width="1.0" stroke-dasharray="60 30" opacity="0.16" />
+
+    <!-- Twilight stars -->
+    <path d="M 112.0,73.0 Q 112.8,81.2 121.0,82.0 Q 112.8,82.8 112.0,91.0 Q 111.2,82.8 103.0,82.0 Q 111.2,81.2 112.0,73.0 Z" fill="#FFF7E4" opacity="0.86" />
+<path d="M 246.0,127.5 Q 246.5,133.5 252.5,134.0 Q 246.5,134.5 246.0,140.5 Q 245.5,134.5 239.5,134.0 Q 245.5,133.5 246.0,127.5 Z" fill="#FFF7E4" opacity="0.72" />
+<path d="M 542.0,60.5 Q 542.6,67.4 549.5,68.0 Q 542.6,68.6 542.0,75.5 Q 541.4,68.6 534.5,68.0 Q 541.4,67.4 542.0,60.5 Z" fill="#FFF7E4" opacity="0.78" />
+<path d="M 824.0,84.0 Q 824.8,93.2 834.0,94.0 Q 824.8,94.8 824.0,104.0 Q 823.2,94.8 814.0,94.0 Q 823.2,93.2 824.0,84.0 Z" fill="#FFF7E4" opacity="0.88" />
+<path d="M 1248.0,77.5 Q 1248.7,85.3 1256.5,86.0 Q 1248.7,86.7 1248.0,94.5 Q 1247.3,86.7 1239.5,86.0 Q 1247.3,85.3 1248.0,77.5 Z" fill="#FFF7E4" opacity="0.84" />
+<path d="M 1286.0,206.0 Q 1286.5,211.5 1292.0,212.0 Q 1286.5,212.5 1286.0,218.0 Q 1285.5,212.5 1280.0,212.0 Q 1285.5,211.5 1286.0,206.0 Z" fill="#FFF7E4" opacity="0.68" />
+    <circle cx="64" cy="146" r="2.2" fill="#FFF7E4" opacity="0.65" />
+<circle cx="182" cy="54" r="2.6" fill="#FFF7E4" opacity="0.72" />
+<circle cx="312" cy="74" r="2.0" fill="#FFF7E4" opacity="0.58" />
+<circle cx="686" cy="54" r="2.5" fill="#FFF7E4" opacity="0.70" />
+<circle cx="764" cy="146" r="2.0" fill="#FFF7E4" opacity="0.55" />
+<circle cx="932" cy="62" r="2.8" fill="#FFF7E4" opacity="0.76" />
+<circle cx="1180" cy="56" r="2.4" fill="#FFF7E4" opacity="0.68" />
+<circle cx="1310" cy="142" r="2.2" fill="#FFF7E4" opacity="0.62" />
+
+    <!-- LAYER 3: Layered Calm Twilight Horizon Silhouettes -->
+    <path d="M 0,480 L 0.0,418.2 L 15.1,420.1 L 30.2,421.9 L 45.3,423.6 L 60.4,425.1 L 75.6,426.4 L 90.7,427.5 L 105.8,428.4 L 120.9,429.1 L 136.0,429.5 L 151.1,429.7 L 166.2,429.7 L 181.3,429.5 L 196.4,429.0 L 211.6,428.3 L 226.7,427.4 L 241.8,426.3 L 256.9,425.0 L 272.0,423.6 L 287.1,422.0 L 302.2,420.3 L 317.3,418.6 L 332.4,416.7 L 347.6,414.9 L 362.7,413.0 L 377.8,411.1 L 392.9,409.3 L 408.0,407.5 L 423.1,405.7 L 438.2,404.1 L 453.3,402.6 L 468.4,401.2 L 483.6,399.9 L 498.7,398.8 L 513.8,397.8 L 528.9,397.0 L 544.0,396.3 L 559.1,395.8 L 574.2,395.4 L 589.3,395.1 L 604.4,395.0 L 619.6,394.9 L 634.7,394.9 L 649.8,395.0 L 664.9,395.2 L 680.0,395.3 L 695.1,395.5 L 710.2,395.7 L 725.3,395.8 L 740.4,395.9 L 755.6,396.0 L 770.7,395.9 L 785.8,395.7 L 800.9,395.5 L 816.0,395.1 L 831.1,394.6 L 846.2,393.9 L 861.3,393.1 L 876.4,392.2 L 891.6,391.1 L 906.7,390.0 L 921.8,388.7 L 936.9,387.3 L 952.0,385.8 L 967.1,384.2 L 982.2,382.6 L 997.3,381.0 L 1012.4,379.4 L 1027.6,377.7 L 1042.7,376.2 L 1057.8,374.6 L 1072.9,373.2 L 1088.0,371.9 L 1103.1,370.7 L 1118.2,369.7 L 1133.3,368.8 L 1148.4,368.1 L 1163.6,367.7 L 1178.7,367.4 L 1193.8,367.4 L 1208.9,367.6 L 1224.0,368.0 L 1239.1,368.7 L 1254.2,369.5 L 1269.3,370.6 L 1284.4,372.0 L 1299.6,373.5 L 1314.7,375.2 L 1329.8,377.0 L 1344.9,379.0 L 1360.0,381.1 L 1360,480 Z" fill="#353960" opacity="0.62" />
+    <path d="M 0,480 L 0.0,443.0 L 15.1,442.7 L 30.2,442.1 L 45.3,441.3 L 60.4,440.2 L 75.6,439.0 L 90.7,437.6 L 105.8,435.9 L 120.9,434.2 L 136.0,432.2 L 151.1,430.2 L 166.2,428.1 L 181.3,425.9 L 196.4,423.8 L 211.6,421.6 L 226.7,419.5 L 241.8,417.4 L 256.9,415.5 L 272.0,413.8 L 287.1,412.1 L 302.2,410.7 L 317.3,409.5 L 332.4,408.5 L 347.6,407.7 L 362.7,407.2 L 377.8,406.9 L 392.9,406.8 L 408.0,406.9 L 423.1,407.2 L 438.2,407.7 L 453.3,408.3 L 468.4,409.1 L 483.6,410.0 L 498.7,410.9 L 513.8,411.9 L 528.9,413.0 L 544.0,414.0 L 559.1,415.0 L 574.2,415.9 L 589.3,416.8 L 604.4,417.5 L 619.6,418.2 L 634.7,418.8 L 649.8,419.2 L 664.9,419.5 L 680.0,419.7 L 695.1,419.8 L 710.2,419.8 L 725.3,419.7 L 740.4,419.6 L 755.6,419.4 L 770.7,419.3 L 785.8,419.1 L 800.9,419.0 L 816.0,418.9 L 831.1,418.9 L 846.2,419.0 L 861.3,419.2 L 876.4,419.6 L 891.6,420.1 L 906.7,420.8 L 921.8,421.6 L 936.9,422.6 L 952.0,423.8 L 967.1,425.2 L 982.2,426.6 L 997.3,428.2 L 1012.4,430.0 L 1027.6,431.7 L 1042.7,433.6 L 1057.8,435.4 L 1072.9,437.3 L 1088.0,439.1 L 1103.1,440.9 L 1118.2,442.5 L 1133.3,444.0 L 1148.4,445.4 L 1163.6,446.5 L 1178.7,447.5 L 1193.8,448.2 L 1208.9,448.7 L 1224.0,448.9 L 1239.1,448.9 L 1254.2,448.7 L 1269.3,448.2 L 1284.4,447.5 L 1299.6,446.5 L 1314.7,445.4 L 1329.8,444.1 L 1344.9,442.6 L 1360.0,441.0 L 1360,480 Z" fill="#262A48" opacity="0.82" />
+    <path d="M 0,480 L 0.0,445.5 L 15.1,444.6 L 30.2,443.5 L 45.3,442.4 L 60.4,441.2 L 75.6,440.1 L 90.7,438.9 L 105.8,437.9 L 120.9,437.0 L 136.0,436.2 L 151.1,435.6 L 166.2,435.2 L 181.3,435.0 L 196.4,435.1 L 211.6,435.4 L 226.7,436.0 L 241.8,436.8 L 256.9,437.9 L 272.0,439.1 L 287.1,440.6 L 302.2,442.2 L 317.3,443.9 L 332.4,445.6 L 347.6,447.4 L 362.7,449.2 L 377.8,450.9 L 392.9,452.5 L 408.0,454.0 L 423.1,455.4 L 438.2,456.5 L 453.3,457.5 L 468.4,458.2 L 483.6,458.7 L 498.7,459.1 L 513.8,459.2 L 528.9,459.2 L 544.0,459.0 L 559.1,458.7 L 574.2,458.4 L 589.3,457.9 L 604.4,457.5 L 619.6,457.1 L 634.7,456.7 L 649.8,456.3 L 664.9,456.1 L 680.0,456.0 L 695.1,456.0 L 710.2,456.1 L 725.3,456.3 L 740.4,456.6 L 755.6,457.1 L 770.7,457.6 L 785.8,458.1 L 800.9,458.6 L 816.0,459.1 L 831.1,459.6 L 846.2,460.0 L 861.3,460.2 L 876.4,460.3 L 891.6,460.2 L 906.7,459.9 L 921.8,459.4 L 936.9,458.7 L 952.0,457.8 L 967.1,456.7 L 982.2,455.4 L 997.3,453.9 L 1012.4,452.3 L 1027.6,450.5 L 1042.7,448.7 L 1057.8,446.9 L 1072.9,445.1 L 1088.0,443.4 L 1103.1,441.7 L 1118.2,440.2 L 1133.3,438.9 L 1148.4,437.7 L 1163.6,436.8 L 1178.7,436.1 L 1193.8,435.7 L 1208.9,435.5 L 1224.0,435.6 L 1239.1,435.9 L 1254.2,436.4 L 1269.3,437.0 L 1284.4,437.9 L 1299.6,438.8 L 1314.7,439.8 L 1329.8,440.9 L 1344.9,441.9 L 1360.0,443.0 L 1360,480 Z" fill="#1A1E34" opacity="0.94" />
+
+    <!-- LAYER 4: Center-Left Brand Typography (Positioned cleanly clear of Discord's bottom-left avatar!) -->
+    <g transform="translate(362, 134)">
+      <!-- Compact geometric TL;DR bar mark echoing the avatar's terracotta hairpin -->
+      <g transform="translate(0, 6)">
+        <rect x="0" y="0" width="54" height="7" rx="3.5" fill="#9AA4C4" opacity="0.72" />
+        <rect x="0" y="14" width="40" height="7" rx="3.5" fill="#CFD6EA" opacity="0.86" />
+        <circle cx="4.5" cy="34.5" r="4.5" fill="#FFF6EA" />
+        <rect x="15" y="29" width="46" height="11" rx="5.5" fill="url(#terracotta-bar)" />
+      </g>
+
+      <!-- Crisp Editorial Wordmark -->
+      <text x="76" y="42" fill="#FFF8EE" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="56" font-weight="800" letter-spacing="-1.2">TL;DR</text>
+
+      <!-- Clean one-line value statement -->
+      <text x="2" y="88" fill="#E8DFEF" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="21" font-weight="500" letter-spacing="0.2" opacity="0.95">Distill chaotic Discord threads into clear takeaways.</text>
+
+      <!-- Quiet pill metadata tags -->
+      <g transform="translate(0, 114)">
+        <rect x="0" y="0" width="74" height="30" rx="15" fill="#1C2138" fill-opacity="0.76" stroke="#FFF4DF" stroke-opacity="0.22" stroke-width="1.2" />
+        <text x="37" y="20" text-anchor="middle" fill="#FFD9B8" font-family="'Cascadia Code', Consolas, monospace" font-size="14" font-weight="600">/tldr</text>
+
+        <rect x="86" y="0" width="136" height="30" rx="15" fill="#1C2138" fill-opacity="0.76" stroke="#FFF4DF" stroke-opacity="0.18" stroke-width="1.2" />
+        <text x="154" y="20" text-anchor="middle" fill="#E5E8F5" font-family="'Segoe UI', Arial, sans-serif" font-size="13.5" font-weight="600">BYOK Write-Only</text>
+
+        <rect x="234" y="0" width="154" height="30" rx="15" fill="#1C2138" fill-opacity="0.76" stroke="#FFF4DF" stroke-opacity="0.18" stroke-width="1.2" />
+        <text x="311" y="20" text-anchor="middle" fill="#E5E8F5" font-family="'Segoe UI', Arial, sans-serif" font-size="13.5" font-weight="600">5 to 1,500 Messages</text>
+      </g>
+    </g>
+
+    <!-- LAYER 5: Minimalist Frosted Preview Card on Right (Distillation Visual Cue) -->
+    <g transform="translate(888, 134)" filter="url(#soft-shadow)">
+      <rect x="0" y="0" width="356" height="194" rx="14" fill="url(#card-bg)" stroke="#FFF4DF" stroke-opacity="0.20" stroke-width="1.2" />
+      <!-- Terracotta left accent bar matching Discord embed -->
+      <rect x="0" y="14" width="5" height="166" rx="2.5" fill="url(#terracotta-bar)" />
+
+      <!-- Mini header row -->
+      <text x="22" y="34" fill="#FFF7EC" font-family="'Segoe UI', Arial, sans-serif" font-size="15.5" font-weight="700">TL;DR | #general</text>
+      <rect x="272" y="18" width="64" height="22" rx="11" fill="#D9744E" fill-opacity="0.24" stroke="#F0A076" stroke-opacity="0.50" stroke-width="1" />
+      <text x="304" y="33" text-anchor="middle" fill="#FFE0C2" font-family="'Cascadia Code', Consolas, monospace" font-size="11.5" font-weight="600">Decided</text>
+
+      <!-- Abstract condensed summary schematic lines -->
+      <rect x="22" y="54" width="214" height="7" rx="3.5" fill="#E6EAF6" opacity="0.62" />
+      <rect x="22" y="70" width="176" height="7" rx="3.5" fill="#B8C0D9" opacity="0.44" />
+
+      <line x1="22" y1="94" x2="334" y2="94" stroke="#FFF4DF" stroke-opacity="0.12" stroke-width="1" />
+
+      <!-- Bullet takeaway 1 -->
+      <circle cx="27" cy="116" r="4" fill="#F0A076" />
+      <rect x="40" y="112" width="192" height="8" rx="4" fill="#FFF6EA" opacity="0.86" />
+      <rect x="244" y="112" width="44" height="8" rx="4" fill="#70C4FF" opacity="0.72" />
+
+      <!-- Bullet takeaway 2 -->
+      <circle cx="27" cy="142" r="4" fill="#F0A076" />
+      <rect x="40" y="138" width="224" height="8" rx="4" fill="#E6EAF6" opacity="0.70" />
+      <rect x="276" y="138" width="44" height="8" rx="4" fill="#70C4FF" opacity="0.72" />
+
+      <!-- Mini footer stats -->
+      <text x="22" y="176" fill="#A9B0CA" font-family="'Cascadia Code', Consolas, monospace" font-size="11.5">200 -&gt; 48 turns | verified jump links</text>
+    </g>
+
+    <!-- Subtle top-left quiet framing rule (balances composition above Discord avatar circle) -->
+    <g transform="translate(42, 42)" opacity="0.34">
+      <circle cx="0" cy="0" r="3.5" fill="#FFF4DF" />
+      <line x1="12" y1="0" x2="96" y2="0" stroke="#FFF4DF" stroke-width="1.2" />
+    </g>
+
+    <!-- Soft warm atmospheric bloom across upper-right sunset -->
+    <circle cx="1072" cy="240" r="360" fill="url(#sun-halo)" opacity="0.22" style="mix-blend-mode: screen;" />
+  </g>
+</svg>

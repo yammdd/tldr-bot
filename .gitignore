@@ -34,8 +34,7 @@ data/
 *.log
 *.tmp
 assets/_preview_tmp.html
-scripts/generate_avatar.py
-scripts/generate_preview.py
+scripts/
 
 # IDE & OS
 .vscode/
