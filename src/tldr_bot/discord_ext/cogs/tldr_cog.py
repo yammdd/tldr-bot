@@ -10,7 +10,6 @@ from discord import app_commands
 from discord.ext import commands
 
 from tldr_bot.discord_ext.cache import SummaryCache
-from tldr_bot.discord_ext.cogs.admin_cog import LANGUAGE_CHOICES
 from tldr_bot.discord_ext.concurrency import ConcurrencyLimitError
 from tldr_bot.discord_ext.fetcher import FetchResult, fetch_channel_messages, parse_since_duration
 from tldr_bot.discord_ext.preprocessor import PreprocessedConversation, preprocess_messages
@@ -22,16 +21,10 @@ from tldr_bot.discord_ext.ui_summary import (
 )
 from tldr_bot.i18n import t
 from tldr_bot.llm.client import LLMError
-from tldr_bot.llm.prompts import SUMMARY_STYLES
 from tldr_bot.llm.summarizer import SummaryResult
 from tldr_bot.security.vault import GuildLLMConfig
 
 logger = logging.getLogger(__name__)
-
-STYLE_CHOICES: list[app_commands.Choice[str]] = [
-    app_commands.Choice(name=spec.label, value=spec.id)
-    for spec in SUMMARY_STYLES.values()
-]
 
 
 class TldrCog(commands.Cog):
@@ -68,12 +61,7 @@ class TldrCog(commands.Cog):
         perms = channel.permissions_for(me)
         return bool(perms.view_channel and perms.read_message_history)
 
-    async def _rerun_session(
-        self,
-        ctx: SummarySessionContext,
-        new_style: str,
-        bypass_cache: bool,
-    ) -> tuple[SummaryResult, bool]:
+    async def _regenerate_session(self, ctx: SummarySessionContext) -> SummaryResult:
         creds = self.bot.vault.get_runtime_credentials(ctx.guild_id)
         if creds is None:
             raise LLMError("not_configured")
@@ -83,16 +71,11 @@ class TldrCog(commands.Cog):
             channel_id=0,
             latest_message_id=ctx.latest_message_id,
             scope_tag=ctx.scope_tag,
-            style_id=new_style,
+            style_id="default",
             language_code=ctx.lang_code,
             focus_query=ctx.focus_query,
             model_id=creds.model,
         )
-        if not bypass_cache:
-            cached = self.bot.summary_cache.get(cache_key)
-            if cached is not None:
-                return cached, True
-
         async with self.bot.concurrency.acquire(ctx.guild_id):
             result = await self.bot.summarizer.summarize(
                 creds=creds,
@@ -102,17 +85,13 @@ class TldrCog(commands.Cog):
                 turns=ctx.conv.turns,
                 valid_ref_ids=ctx.conv.valid_ref_ids,
                 language_code=ctx.lang_code,
-                style_id=new_style,
                 focus_query=ctx.focus_query,
             )
         self.bot.summary_cache.set(cache_key, result)
-        return result, False
+        return result
 
     async def _validate_access(
-        self,
-        interaction: discord.Interaction,
-        *,
-        override_language: str | None,
+        self, interaction: discord.Interaction
     ) -> tuple[discord.Guild, object, str, GuildLLMConfig] | None:
         guild = interaction.guild
         channel = interaction.channel
@@ -120,7 +99,7 @@ class TldrCog(commands.Cog):
             await interaction.response.send_message(t("en", "guild_only"), ephemeral=True)
             return None
 
-        lang = override_language or self.bot.prefs.get_language(guild.id)
+        lang = self.bot.prefs.get_language(guild.id)
 
         creds = self.bot.vault.get_runtime_credentials(guild.id)
         if creds is None:
@@ -193,7 +172,6 @@ class TldrCog(commands.Cog):
         channel_name: str,
         full_scope_tag: str,
         latest_message_id: int,
-        style_id: str,
         lang: str,
         focus_query: str | None,
     ) -> tuple[SummaryResult, bool] | None:
@@ -202,7 +180,7 @@ class TldrCog(commands.Cog):
             channel_id=0,
             latest_message_id=latest_message_id,
             scope_tag=full_scope_tag,
-            style_id=style_id,
+            style_id="default",
             language_code=lang,
             focus_query=focus_query,
             model_id=creds.model,
@@ -246,7 +224,6 @@ class TldrCog(commands.Cog):
                 turns=conv.turns,
                 valid_ref_ids=conv.valid_ref_ids,
                 language_code=lang,
-                style_id=style_id,
                 focus_query=focus_query,
                 on_stage_update=_on_stage,
             )
@@ -273,14 +250,10 @@ class TldrCog(commands.Cog):
         since_delta: timedelta | None = None,
         after_message: discord.Message | None = None,
         scope_tag: str,
-        style_id: str,
         focus_query: str | None,
-        override_language: str | None,
         private: bool = False,
     ) -> None:
-        validated = await self._validate_access(
-            interaction, override_language=override_language
-        )
+        validated = await self._validate_access(interaction)
         if validated is None:
             return
         guild, channel, lang, creds = validated
@@ -321,7 +294,6 @@ class TldrCog(commands.Cog):
                     channel_name=channel_name,
                     full_scope_tag=full_scope_tag,
                     latest_message_id=fetch_res.latest_message_id,
-                    style_id=style_id,
                     lang=lang,
                     focus_query=focus_query,
                 )
@@ -335,7 +307,6 @@ class TldrCog(commands.Cog):
                     conv=conv,
                     channel_name=channel_name,
                     lang_code=lang,
-                    style_id=style_id,
                     hit_fetch_cap=fetch_res.hit_hard_cap,
                     from_cache=from_cache,
                     public_share=not private,
@@ -349,7 +320,6 @@ class TldrCog(commands.Cog):
                     conv=conv,
                     result=result,
                     lang_code=lang,
-                    style_id=style_id,
                     focus_query=focus_query,
                     scope_tag=full_scope_tag,
                     latest_message_id=fetch_res.latest_message_id,
@@ -360,7 +330,7 @@ class TldrCog(commands.Cog):
                 view = SummaryActionView(
                     ctx=session_ctx,
                     pages=pages,
-                    rerun_callback=self._rerun_session,
+                    rerun_callback=self._regenerate_session,
                     format_error_fn=self._format_any_error,
                 )
                 await interaction.edit_original_response(
@@ -374,34 +344,25 @@ class TldrCog(commands.Cog):
 
     @app_commands.command(
         name="tldr",
-        description="Summarize recent channel messages with clear speaker attribution and decisions",
+        description="Summarize recent channel messages clearly with speaker attribution",
     )
     @app_commands.guild_only()
     @app_commands.describe(
         count="Number of recent messages to summarize (e.g. 100, 300, 500; default 100)",
         since="Or summarize by time window (e.g. 30m, 2h, 12h, 24h, 3d, today)",
-        style="Summary format (default: Standard)",
-        focus="Optional: specific topic or question to focus on (e.g. 'dinner plans', 'deadlines')",
-        language="Optional: override output language for this summary only",
+        focus="Optional: specific topic or question to focus on",
         private="Optional: set True so only you can see the summary (default: visible to everyone)",
     )
-    @app_commands.choices(style=STYLE_CHOICES, language=LANGUAGE_CHOICES)
     async def tldr_command(
         self,
         interaction: discord.Interaction,
         count: int | None = None,
         since: str | None = None,
-        style: app_commands.Choice[str] | None = None,
         focus: str | None = None,
-        language: app_commands.Choice[str] | None = None,
         private: bool = False,
     ) -> None:
         guild = interaction.guild
-        lang = (
-            language.value
-            if language is not None
-            else self.bot.prefs.get_language(guild.id if guild else None)
-        )
+        lang = self.bot.prefs.get_language(guild.id if guild else None)
         settings = self.bot.settings
 
         since_delta: timedelta | None = None
@@ -438,9 +399,7 @@ class TldrCog(commands.Cog):
             count=target_count,
             since_delta=since_delta,
             scope_tag=scope_tag,
-            style_id=style.value if style else "standard",
             focus_query=focus,
-            override_language=language.value if language else None,
             private=private,
         )
 
@@ -453,8 +412,6 @@ class TldrCog(commands.Cog):
             interaction,
             after_message=message,
             scope_tag=f"after:{message.id}",
-            style_id="standard",
             focus_query=None,
-            override_language=None,
             private=False,
         )

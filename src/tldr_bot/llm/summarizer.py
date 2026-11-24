@@ -12,6 +12,7 @@ from typing import Any, Awaitable, Callable, Literal, Sequence
 from tldr_bot.llm.client import UnifiedLLMClient
 from tldr_bot.llm.presets import compute_context_thresholds
 from tldr_bot.llm.prompts import (
+    DEFAULT_SUMMARY_TEMPERATURE,
     build_map_chunk_messages,
     build_reduce_messages,
     build_single_pass_messages,
@@ -306,7 +307,6 @@ class ConversationSummarizer:
         turns: Sequence[TranscriptTurn],
         valid_ref_ids: set[int],
         language_code: str,
-        style_id: str = "standard",
         focus_query: str | None = None,
         on_stage_update: ProgressCallback | None = None,
     ) -> SummaryResult:
@@ -340,14 +340,13 @@ class ConversationSummarizer:
                 participants_summary=participants_summary,
                 transcript_text=plan.chunks[0].render_text(),
                 language_code=language_code,
-                style_id=style_id,
                 focus_query=focus_query,
             )
             resp = await self._llm.complete_chat(
                 creds,
                 messages,
                 max_tokens=4096,
-                temperature=0.35 if style_id in {"casual", "fun"} else 0.15,
+                temperature=DEFAULT_SUMMARY_TEMPERATURE,
                 json_mode=True,
             )
             total_prompt_tokens = resp.prompt_tokens
@@ -376,7 +375,7 @@ class ConversationSummarizer:
                         creds,
                         map_msgs,
                         max_tokens=3000,
-                        temperature=0.1,
+                        temperature=0.2,
                         json_mode=True,
                     )
 
@@ -401,14 +400,13 @@ class ConversationSummarizer:
                 participants_summary=participants_summary,
                 segment_summaries_json=json.dumps(extracted_segments, ensure_ascii=False),
                 language_code=language_code,
-                style_id=style_id,
                 focus_query=focus_query,
             )
             reduce_resp = await self._llm.complete_chat(
                 creds,
                 reduce_msgs,
                 max_tokens=4096,
-                temperature=0.35 if style_id in {"casual", "fun"} else 0.15,
+                temperature=DEFAULT_SUMMARY_TEMPERATURE,
                 json_mode=True,
             )
             total_prompt_tokens += reduce_resp.prompt_tokens

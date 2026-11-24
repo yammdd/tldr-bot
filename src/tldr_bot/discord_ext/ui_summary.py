@@ -1,4 +1,4 @@
-"""Unslopped editorial Discord Embed renderer, safe Jump Link builder, pagination, and controls."""
+"""Minimalist editorial Discord Embed renderer, safe Jump Links, and quiet single-action controls."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from tldr_bot.discord_ext.preprocessor import PreprocessedConversation
 from tldr_bot.i18n import t
 from tldr_bot.llm.summarizer import SummaryResult
 
-# Editorial palette: quiet dark slate neutral + one muted terracotta accent when mentions exist
 COLOR_INK_SLATE = discord.Color.from_rgb(43, 48, 56)       # #2B3038
 COLOR_TERRACOTTA = discord.Color.from_rgb(200, 109, 68)    # #C86D44
 COLOR_SAGE = discord.Color.from_rgb(61, 122, 90)           # #3D7A5A
@@ -43,7 +42,6 @@ def _format_line_with_suffix(prefix: str, body: str, suffix: str, *, max_len: in
     """Safely truncate body text BEFORE appending markdown jump links so URLs never break."""
     available = max_len - len(prefix) - len(suffix)
     if available < 40:
-        # Drop suffix only in extreme edge case where prefix+suffix alone fills field
         trim_body = body[: max(20, max_len - len(prefix) - 3)].rstrip()
         return f"{prefix}{trim_body}..." if len(prefix) + len(body) > max_len else f"{prefix}{body}"
     if len(body) <= available:
@@ -134,9 +132,7 @@ def _collect_sections(
     result: SummaryResult,
     conv: PreprocessedConversation,
     lang_code: str,
-    style_id: str,
     public_share: bool,
-    requester_display: str,
 ) -> list[tuple[str, str]]:
     jump_label = t(lang_code, "summary_jump_link")
     jump_full = t(lang_code, "summary_jump_full")
@@ -157,22 +153,7 @@ def _collect_sections(
         )
         for topic in result.topics
     ]
-    person_lines = [
-        _format_line_with_suffix(
-            f"- **{person.speaker}:** ",
-            person.summary,
-            _render_jump_links(person.ref_ids, conv.ref_to_jump_url, jump_label, max_links=1),
-        )
-        for person in result.by_person
-    ]
-
-    if style_id == "by_person" and person_lines:
-        _add_section(t(lang_code, "summary_by_person_header"), person_lines)
-        _add_section(t(lang_code, "summary_topics_header"), topic_lines)
-    else:
-        _add_section(t(lang_code, "summary_topics_header"), topic_lines)
-        if not topic_lines and person_lines:
-            _add_section(t(lang_code, "summary_by_person_header"), person_lines)
+    _add_section(t(lang_code, "summary_topics_header"), topic_lines)
 
     decision_lines = [f"- {d}" for d in result.decisions]
     for act in result.action_items:
@@ -201,8 +182,6 @@ def _collect_sections(
         hl_lines.append(_format_line_with_suffix("- ", f"{hl.label}{by_part}", jump))
     _add_section(t(lang_code, "summary_highlights_header"), hl_lines)
 
-    # Personal mentions: private view says "Mentions of you"; public view stays clean by omitting
-    # personal pings when broadcast publicly, or labeling with requester name only on private views.
     if not public_share and conv.requester_mentions:
         mention_lines = [
             _format_line_with_suffix(
@@ -223,7 +202,6 @@ def build_summary_embeds(
     conv: PreprocessedConversation,
     channel_name: str,
     lang_code: str,
-    style_id: str,
     hit_fetch_cap: bool = False,
     from_cache: bool = False,
     public_share: bool = True,
@@ -241,9 +219,7 @@ def build_summary_embeds(
         result=result,
         conv=conv,
         lang_code=lang_code,
-        style_id=style_id,
         public_share=public_share,
-        requester_display=requester_display,
     )
 
     has_personal_mentions = not public_share and bool(conv.requester_mentions)
@@ -303,7 +279,7 @@ def build_summary_embeds(
 
 @dataclass
 class SummarySessionContext:
-    """Holds already-fetched conversation data so action buttons avoid refetching Discord history."""
+    """Holds already-fetched conversation data so Regenerate avoids refetching Discord history."""
 
     guild_id: int
     channel_name: str
@@ -312,7 +288,6 @@ class SummarySessionContext:
     conv: PreprocessedConversation
     result: SummaryResult
     lang_code: str
-    style_id: str
     focus_query: str | None
     scope_tag: str
     latest_message_id: int
@@ -321,13 +296,11 @@ class SummarySessionContext:
     is_private: bool = False
 
 
-ReRunCallback = Callable[
-    [SummarySessionContext, str, bool], Awaitable[tuple[SummaryResult, bool]]
-]
+ReRunCallback = Callable[[SummarySessionContext], Awaitable[SummaryResult]]
 
 
 class SummaryActionView(discord.ui.View):
-    """Quiet interactive controls under a TL;DR summary."""
+    """Minimal controls: pagination (only if multi-page) plus a single quiet Regenerate button."""
 
     def __init__(
         self,
@@ -343,7 +316,6 @@ class SummaryActionView(discord.ui.View):
         self._page_idx = 0
         self._rerun = rerun_callback
         self._format_error = format_error_fn
-        self._shared = not ctx.is_private
         self._rebuild_buttons()
 
     def _rebuild_buttons(self) -> None:
@@ -368,39 +340,10 @@ class SummaryActionView(discord.ui.View):
             self.add_item(prev_btn)
             self.add_item(next_btn)
 
-        # Only offer Share button when the summary was requested privately
-        if self._ctx.is_private:
-            share_btn = discord.ui.Button(
-                label=t(lang, "btn_share"),
-                style=discord.ButtonStyle.primary,
-                disabled=self._shared,
-                row=1,
-            )
-            share_btn.callback = self._on_share
-            self.add_item(share_btn)
-
-        if self._ctx.style_id != "by_person":
-            person_btn = discord.ui.Button(
-                label=t(lang, "btn_by_person"),
-                style=discord.ButtonStyle.secondary,
-                row=1,
-            )
-            person_btn.callback = self._on_by_person
-            self.add_item(person_btn)
-
-        if self._ctx.style_id != "detailed":
-            detail_btn = discord.ui.Button(
-                label=t(lang, "btn_detailed"),
-                style=discord.ButtonStyle.secondary,
-                row=1,
-            )
-            detail_btn.callback = self._on_detailed
-            self.add_item(detail_btn)
-
         refresh_btn = discord.ui.Button(
             label=t(lang, "btn_refresh"),
             style=discord.ButtonStyle.secondary,
-            row=1,
+            row=0,
         )
         refresh_btn.callback = self._on_refresh
         self.add_item(refresh_btn)
@@ -419,55 +362,14 @@ class SummaryActionView(discord.ui.View):
             embed=self._pages[self._page_idx], view=self
         )
 
-    async def _on_share(self, interaction: discord.Interaction) -> None:
-        channel = interaction.channel
-        if channel is None or not hasattr(channel, "send"):
-            await interaction.response.send_message(
-                t(self._ctx.lang_code, "perm_no_channel_history"), ephemeral=True
-            )
-            return
-
-        public_pages = build_summary_embeds(
-            result=self._ctx.result,
-            conv=self._ctx.conv,
-            channel_name=self._ctx.channel_name,
-            lang_code=self._ctx.lang_code,
-            style_id=self._ctx.style_id,
-            hit_fetch_cap=self._ctx.hit_fetch_cap,
-            from_cache=False,
-            public_share=True,
-            requester_display=self._ctx.requester_display,
-        )
-        try:
-            await channel.send(
-                embeds=public_pages[:3],
-                allowed_mentions=discord.AllowedMentions.none(),
-            )
-        except discord.Forbidden:
-            await interaction.response.send_message(
-                t(self._ctx.lang_code, "perm_no_channel_history"), ephemeral=True
-            )
-            return
-
-        self._shared = True
-        self._rebuild_buttons()
-        await interaction.response.edit_message(
-            embed=self._pages[self._page_idx], view=self
-        )
-        await interaction.followup.send(
-            t(self._ctx.lang_code, "btn_shared_ok"), ephemeral=True
-        )
-
-    async def _run_variant(
-        self, interaction: discord.Interaction, new_style: str, bypass_cache: bool
-    ) -> None:
+    async def _on_refresh(self, interaction: discord.Interaction) -> None:
         await interaction.response.edit_message(
             content=t(self._ctx.lang_code, "btn_working"),
             embed=None,
             view=None,
         )
         try:
-            new_result, from_cache = await self._rerun(self._ctx, new_style, bypass_cache)
+            new_result = await self._rerun(self._ctx)
         except Exception as exc:
             err_text = self._format_error(self._ctx.lang_code, exc)
             await interaction.edit_original_response(
@@ -478,17 +380,14 @@ class SummaryActionView(discord.ui.View):
             return
 
         self._ctx.result = new_result
-        self._ctx.style_id = new_style
-        self._ctx.from_cache = from_cache
-        self._shared = not self._ctx.is_private
+        self._ctx.from_cache = False
         self._pages = build_summary_embeds(
             result=new_result,
             conv=self._ctx.conv,
             channel_name=self._ctx.channel_name,
             lang_code=self._ctx.lang_code,
-            style_id=new_style,
             hit_fetch_cap=self._ctx.hit_fetch_cap,
-            from_cache=from_cache,
+            from_cache=False,
             public_share=not self._ctx.is_private,
             requester_display=self._ctx.requester_display,
         )
@@ -500,12 +399,3 @@ class SummaryActionView(discord.ui.View):
             view=self,
             allowed_mentions=discord.AllowedMentions.none(),
         )
-
-    async def _on_by_person(self, interaction: discord.Interaction) -> None:
-        await self._run_variant(interaction, "by_person", bypass_cache=False)
-
-    async def _on_detailed(self, interaction: discord.Interaction) -> None:
-        await self._run_variant(interaction, "detailed", bypass_cache=False)
-
-    async def _on_refresh(self, interaction: discord.Interaction) -> None:
-        await self._run_variant(interaction, self._ctx.style_id, bypass_cache=True)

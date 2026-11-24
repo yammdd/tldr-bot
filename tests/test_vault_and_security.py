@@ -218,13 +218,6 @@ def test_guild_language_preferences_sqlite_and_copy_hygiene(tmp_path: Path) -> N
             assert "\u2013" not in val, f"En-dash in UI_STRINGS[{locale}][{key}]"
             assert "meta ai" not in val.lower(), f"Third-party brand copy in UI_STRINGS[{locale}][{key}]"
 
-    from tldr_bot.llm.prompts import SUMMARY_STYLES
-
-    for style in SUMMARY_STYLES.values():
-        assert "\u2014" not in style.label
-        assert "meta ai" not in style.label.lower()
-        assert "meta ai" not in style.guidance.lower()
-
     readme = Path("README.md").read_text(encoding="utf-8")
     assert "\u2014" not in readme
     assert "\u2013" not in readme

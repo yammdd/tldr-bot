@@ -328,7 +328,6 @@ async def test_summarizer_runs_parallel_map_reduce_when_over_threshold() -> None
         turns=turns,
         valid_ref_ids=set(range(1, 15)),
         language_code="en",
-        style_id="standard",
     )
 
     assert result.strategy == "map_reduce"
@@ -391,7 +390,6 @@ def test_embed_builder_hides_personal_mentions_on_public_share() -> None:
         conv=conv,
         channel_name="general",
         lang_code="en",
-        style_id="standard",
         public_share=False,
     )
     public_embeds = build_summary_embeds(
@@ -399,7 +397,6 @@ def test_embed_builder_hides_personal_mentions_on_public_share() -> None:
         conv=conv,
         channel_name="general",
         lang_code="en",
-        style_id="standard",
         public_share=True,
         requester_display="Alex",
     )
@@ -461,7 +458,6 @@ def test_embed_builder_never_leaks_info_status_key_or_breaks_jump_links() -> Non
         conv=conv,
         channel_name="level",
         lang_code="vi",
-        style_id="standard",
         public_share=True,
         requester_display="Yamm",
     )

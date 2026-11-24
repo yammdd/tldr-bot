@@ -208,13 +208,9 @@ UI_STRINGS: dict[str, dict[str, str]] = {
         "topic_status_open": "Open",
         "topic_status_resolved": "Resolved",
         "topic_status_info": "",
-        "btn_share": "Share",
-        "btn_by_person": "By participant",
-        "btn_detailed": "More detail",
         "btn_refresh": "Regenerate",
         "btn_prev": "Prev",
         "btn_next": "Next",
-        "btn_shared_ok": "Shared summary to channel (mentions disabled)",
         "btn_working": "Updating summary...",
         "btn_expired": "This summary session expired. Run `/tldr` again.",
         "err_ssrf_scheme": "Endpoint URL must start with `https://`",
@@ -379,13 +375,9 @@ UI_STRINGS: dict[str, dict[str, str]] = {
         "topic_status_open": "Chưa chốt",
         "topic_status_resolved": "Đã xử lý",
         "topic_status_info": "",
-        "btn_share": "Chia sẻ",
-        "btn_by_person": "Theo từng người",
-        "btn_detailed": "Chi tiết hơn",
         "btn_refresh": "Tạo lại",
         "btn_prev": "Trước",
         "btn_next": "Sau",
-        "btn_shared_ok": "Đã chia sẻ bản tóm tắt ra kênh (đã tắt mọi ping)",
         "btn_working": "Đang cập nhật bản tóm tắt...",
         "btn_expired": "Phiên tóm tắt đã hết hạn. Vui lòng chạy lại `/tldr`.",
         "err_ssrf_scheme": "Endpoint phải bắt đầu bằng `https://`",
@@ -431,7 +423,7 @@ def t(lang_code: str, key: str, **kwargs: Any) -> str:
 
 
 class GuildPreferencesStore:
-    """Thread-safe SQLite WAL store for non-secret per-guild preferences (e.g. default language)."""
+    """Thread-safe SQLite WAL store for non-secret per-guild preferences (default language)."""
 
     def __init__(
         self,
