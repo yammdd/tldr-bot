@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -13,6 +14,8 @@ from openai import AsyncOpenAI
 from tldr_bot.security.redactor import redact_secrets
 from tldr_bot.security.ssrf import EndpointSecurityError, validate_endpoint_url_async
 from tldr_bot.security.vault import GuildLLMConfig
+
+logger = logging.getLogger(__name__)
 
 
 class LLMError(Exception):
@@ -100,21 +103,47 @@ def _extract_choice_text(response: Any) -> str:
     choices = getattr(response, "choices", None)
     if not choices:
         return ""
-    msg = getattr(choices[0], "message", None)
+    choice = choices[0]
+    msg = getattr(choice, "message", None)
     if msg is None:
-        return ""
+        # Some non-standard proxies populate top-level choice.text
+        alt_text = getattr(choice, "text", None)
+        return alt_text if isinstance(alt_text, str) else ""
+
     content = getattr(msg, "content", None)
-    if isinstance(content, str):
+    if isinstance(content, str) and content.strip():
         return content
     if isinstance(content, list):
         parts: list[str] = []
         for item in content:
-            if isinstance(item, dict) and item.get("text"):
-                parts.append(str(item["text"]))
+            if isinstance(item, dict):
+                if item.get("type") in (None, "text", "output_text") and item.get("text"):
+                    parts.append(str(item["text"]))
             elif hasattr(item, "text") and item.text:
-                parts.append(str(item.text))
-        return "".join(parts)
+                if getattr(item, "type", None) in (None, "text", "output_text"):
+                    parts.append(str(item.text))
+        joined = "".join(parts)
+        if joined.strip():
+            return joined
+
+    # Some OpenAI-to-Claude proxies translate response_format=json_object into a single tool call
+    tool_calls = getattr(msg, "tool_calls", None)
+    if isinstance(tool_calls, list) and tool_calls:
+        fn = getattr(tool_calls[0], "function", None)
+        args = getattr(fn, "arguments", None) if fn is not None else None
+        if isinstance(args, str) and args.strip():
+            return args
+
     return ""
+
+
+def _should_use_json_response_format(model: str, base_url: str) -> bool:
+    """Avoid response_format=json_object for Claude/Anthropic models where proxies often drop content."""
+    low_model = (model or "").lower()
+    low_url = (base_url or "").lower()
+    if "claude" in low_model or "anthropic.com" in low_url:
+        return False
+    return True
 
 
 _NON_CHAT_MODEL_KEYWORDS: tuple[str, ...] = (
@@ -357,21 +386,69 @@ class UnifiedLLMClient:
                 "max_tokens": max_tokens,
                 "temperature": temperature,
             }
-            if json_mode:
+            if json_mode and _should_use_json_response_format(creds.model, normalized_url):
                 kwargs["response_format"] = {"type": "json_object"}
 
             response = await self._call_with_param_fallback(client, kwargs)
             content = _extract_choice_text(response)
-            if not content or not content.strip():
-                raise LLMError(
-                    "err_unknown",
-                    detail="Model returned an empty summary response.",
-                    model=creds.model,
-                )
-
             usage = getattr(response, "usage", None)
             prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0) if usage else 0
             completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0) if usage else 0
+
+            # Recovery 1: if proxy returned HTTP 200 with empty content while json_object was set,
+            # retry cleanly without response_format and with generous token headroom.
+            if not content or not content.strip():
+                first_finish = (
+                    getattr(response.choices[0], "finish_reason", None)
+                    if getattr(response, "choices", None)
+                    else None
+                )
+                logger.warning(
+                    "Empty completion content on first attempt (model=%s, finish_reason=%s, comp_tok=%d, json_fmt=%s); retrying",
+                    creds.model,
+                    first_finish,
+                    completion_tokens,
+                    "response_format" in kwargs,
+                )
+                retry_kwargs: dict[str, Any] = {
+                    "model": creds.model,
+                    "messages": messages,
+                    "max_tokens": max(max_tokens, 4096),
+                }
+                if "response_format" in kwargs:
+                    response = await self._call_with_param_fallback(client, retry_kwargs)
+                    content = _extract_choice_text(response)
+                    usage = getattr(response, "usage", None)
+                    prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0) if usage else prompt_tokens
+                    completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0) if usage else completion_tokens
+
+            # Recovery 2: some custom OpenAI-to-Claude proxies only emit text reliably over SSE streaming.
+            if not content or not content.strip():
+                stream_text, s_prompt, s_comp = await self._stream_fallback(
+                    client,
+                    model=creds.model,
+                    messages=messages,
+                    max_tokens=max(max_tokens, 4096),
+                )
+                if stream_text.strip():
+                    content = stream_text
+                    prompt_tokens = s_prompt or prompt_tokens
+                    completion_tokens = s_comp or completion_tokens
+
+            if not content or not content.strip():
+                finish_reason = (
+                    getattr(response.choices[0], "finish_reason", "unknown")
+                    if getattr(response, "choices", None)
+                    else "no_choices"
+                )
+                raise LLMError(
+                    "err_unknown",
+                    detail=(
+                        f"Model returned empty content (finish_reason={finish_reason}, "
+                        f"completion_tokens={completion_tokens}). Try switching models via /model."
+                    ),
+                    model=creds.model,
+                )
 
             return LLMResponse(
                 content=content.strip(),
@@ -384,6 +461,44 @@ class UnifiedLLMClient:
             raise map_openai_exception(exc, api_key=creds.api_key, model=creds.model) from exc
         finally:
             await client.close()
+
+    async def _stream_fallback(
+        self,
+        client: AsyncOpenAI,
+        *,
+        model: str,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+    ) -> tuple[str, int, int]:
+        """Fallback to streaming completions for proxies that return empty non-streaming bodies."""
+        parts: list[str] = []
+        prompt_tokens = 0
+        completion_tokens = 0
+        try:
+            stream = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                stream=True,
+            )
+            async for chunk in stream:
+                usage = getattr(chunk, "usage", None)
+                if usage:
+                    prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0) or prompt_tokens
+                    completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0) or completion_tokens
+                choices = getattr(chunk, "choices", None)
+                if not choices:
+                    continue
+                delta = getattr(choices[0], "delta", None)
+                if delta is None:
+                    continue
+                delta_content = getattr(delta, "content", None)
+                if isinstance(delta_content, str) and delta_content:
+                    parts.append(delta_content)
+        except Exception as exc:
+            logger.warning("Streaming fallback failed for model=%s: %s", model, type(exc).__name__)
+            return "", 0, 0
+        return "".join(parts), prompt_tokens, completion_tokens
 
     async def _call_with_param_fallback(
         self, client: AsyncOpenAI, kwargs: dict[str, Any]

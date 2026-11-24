@@ -156,6 +156,62 @@ def test_filter_and_rank_chat_models() -> None:
     assert len(ranked) == 4
 
 
+@pytest.mark.asyncio
+async def test_complete_chat_skips_json_format_for_claude_and_recovers_via_stream(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = UnifiedLLMClient(allow_local_endpoints=False)
+
+    async def _fake_validate(raw_url: str, *, allow_local: bool = False, resolve_dns: bool = True) -> str:
+        from tldr_bot.security.ssrf import validate_endpoint_url
+        return validate_endpoint_url(raw_url, allow_local=allow_local, resolve_dns=False)
+
+    monkeypatch.setattr("tldr_bot.llm.client.validate_endpoint_url_async", _fake_validate)
+
+    seen_calls: list[dict] = []
+
+    async def _fake_stream():
+        for part in ('{"overview": ', '"Streamed summary OK", "topics": []}'):
+            yield SimpleNamespace(
+                choices=[SimpleNamespace(delta=SimpleNamespace(content=part))],
+                usage=None,
+            )
+
+    class _ProxySDKClient:
+        def __init__(self) -> None:
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
+
+        async def _create(self, **kwargs):
+            seen_calls.append(kwargs)
+            if kwargs.get("stream"):
+                return _fake_stream()
+            # Simulate a Claude proxy returning HTTP 200 with empty non-streaming content
+            return SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content=""), finish_reason="stop")],
+                usage=SimpleNamespace(prompt_tokens=100, completion_tokens=0),
+            )
+
+        async def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(client, "_build_sdk_client", lambda **kw: _ProxySDKClient())
+    creds = GuildLLMConfig(
+        provider_id="custom",
+        provider_name="Custom Endpoint",
+        base_url="https://proxy.example.com/v1",
+        model="claude-haiku-5-5",
+        api_key="sk-proxy-fake",
+        updated_at_iso="2026-11-24T00:00:00+00:00",
+    )
+
+    resp = await client.complete_chat(
+        creds, [{"role": "user", "content": "Summarize"}], json_mode=True
+    )
+    assert "response_format" not in seen_calls[0]  # Skipped proactively for Claude
+    assert seen_calls[-1].get("stream") is True    # Recovered automatically via streaming
+    assert "Streamed summary OK" in resp.content
+
+
 def test_parse_and_validate_summary_strips_think_hallucinated_refs_and_mass_mentions() -> None:
     payload = {
         "overview": "Team finalized dinner plans and @everyone noted the Redis hotfix.",

@@ -346,7 +346,7 @@ class ConversationSummarizer:
             resp = await self._llm.complete_chat(
                 creds,
                 messages,
-                max_tokens=2600 if style_id == "detailed" else 2000,
+                max_tokens=4096,
                 temperature=0.35 if style_id in {"casual", "fun"} else 0.15,
                 json_mode=True,
             )
@@ -375,7 +375,7 @@ class ConversationSummarizer:
                     return await self._llm.complete_chat(
                         creds,
                         map_msgs,
-                        max_tokens=1400,
+                        max_tokens=3000,
                         temperature=0.1,
                         json_mode=True,
                     )
@@ -407,7 +407,7 @@ class ConversationSummarizer:
             reduce_resp = await self._llm.complete_chat(
                 creds,
                 reduce_msgs,
-                max_tokens=2600 if style_id == "detailed" else 2100,
+                max_tokens=4096,
                 temperature=0.35 if style_id in {"casual", "fun"} else 0.15,
                 json_mode=True,
             )
